@@ -1,4 +1,4 @@
-// index.js — versão completa e corrigida
+// index.js — BOT DPD com hierarquia dinâmica
 const {
   Client,
   GatewayIntentBits,
@@ -9,19 +9,21 @@ const {
   EmbedBuilder,
 } = require('discord.js');
 
-// ======= 1) CLIENT =======
+// ======= 1) CONFIGURAÇÃO DO CLIENT =======
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds], // Slash commands precisam apenas de Guilds
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers, // Necessário para ler cargos
+  ],
 });
 
-// Mapeamento de comandos
 client.commands = new Collection();
 
 // ======= 2) IMPORTA O COMANDO /hierarquia =======
 const hierarquia = require('./commands/hierarquia.js');
 client.commands.set(hierarquia.data.name, hierarquia);
 
-// ======= 3) REGISTRA OS SLASH COMMANDS AO INICIAR =======
+// ======= 3) REGISTRA O COMANDO =======
 client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot conectado como ${c.user.tag}`);
 
@@ -33,15 +35,71 @@ client.once(Events.ClientReady, async (c) => {
       Routes.applicationGuildCommands(process.env.APP_ID, process.env.GUILD_ID),
       { body: commandsJson }
     );
-    console.log('✅ /hierarquia registrado na guild com sucesso.');
+    console.log('✅ /hierarquia registrado com sucesso.');
   } catch (err) {
     console.error('❌ Erro ao registrar comandos:', err);
   }
 });
 
-// ======= 4) TRATA INTERAÇÕES =======
+// ======= 4) FUNÇÃO: GERA HIERARQUIA AUTOMÁTICA =======
+async function gerarHierarquia(guild, unidade) {
+  // Ajuste os nomes dos cargos conforme seu servidor
+  const divisaoCargos = {
+    FAST: [
+      'Supervisor FAST',
+      'Manager FAST',
+      'Sub-Manager FAST',
+      'Counselor FAST',
+      'Elite Pilot FAST',
+      'Veteran Pilot FAST',
+      'Official Pilot FAST',
+      'Probationary Pilot FAST',
+    ],
+    SWAT: [
+      'Supervisor SWAT',
+      'Manager SWAT',
+      'Sub-Manager SWAT',
+      'Operador SWAT',
+      'Recruta SWAT',
+    ],
+    DAF: [
+      'Supervisor DAF',
+      'Manager DAF',
+      'Sub-Manager DAF',
+      'Agente DAF',
+      'Recruta DAF',
+    ],
+  };
+
+  const cargos = divisaoCargos[unidade.toUpperCase()];
+  if (!cargos) return null;
+
+  let descricao = '';
+
+  for (const nomeCargo of cargos) {
+    const cargo = guild.roles.cache.find(r => r.name === nomeCargo);
+    if (!cargo) {
+      descricao += `**${nomeCargo}:**\n_Cargo não encontrado_\n\n`;
+      continue;
+    }
+
+    const membros = cargo.members.map(m => `${m.user}`).join('\n');
+    descricao += `**${nomeCargo}:**\n${membros || '_Vazio_'}\n\n`;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0x003366)
+    .setTitle(`📋 Hierarquia - ${unidade}`)
+    .setDescription(descricao)
+    .setFooter({ text: 'Departamento de Polícia de Detroit' })
+    .setTimestamp();
+
+  return embed;
+}
+
+// ======= 5) TRATA INTERAÇÕES =======
 client.on(Events.InteractionCreate, async (interaction) => {
-  // 4.a) Slash commands (/hierarquia)
+  // Slash commands
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -58,64 +116,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // 4.b) Seleção do menu /hierarquia
+  // Menu de seleção do /hierarquia
   if (interaction.isStringSelectMenu() && interaction.customId === 'unidade_select') {
-    await interaction.deferUpdate(); // Fecha a interação ephemeral
+    await interaction.deferUpdate();
+    const unidade = interaction.values[0];
+    const embed = await gerarHierarquia(interaction.guild, unidade);
 
-    const escolha = interaction.values[0];
-    const embed = new EmbedBuilder()
-      .setColor(0x003366)
-      .setTitle('📋 Hierarquia DPD - ' + escolha.toUpperCase())
-      .setFooter({ text: 'Departamento de Polícia de Detroit' })
-      .setTimestamp();
-
-    switch (escolha) {
-      case 'fast':
-        embed
-          .setTitle('Hierarquia - FAST')
-          .setColor('#ff0000')
-          .setThumbnail('https://i.imgur.com/lpM5G52.png') // substitua pelo brasão correto
-          .setDescription(`
-**Supervisor Fast:**  
-@Insp. Julio Montenegro | 10052
-
-**Manager FAST:**  
-@Capt. Lyra Black | 10822
-
-**FAST Sub-Manager:**  
-@Sgt.II Hector Jones | 11037
-
-**FAST Counselor:**  
-@Sgt.I Aiden Caldwell | 9270  
-@Sgt.II Deckard S. | 6203
-
-**FAST Elite Pilot:**  
-@Sgt.II Pedro Escobar | 11337
-
-**FAST Veteran Pilot:**  
-Vazio
-
-**FAST Official Pilot:**  
-@Sgt.I Will Toussaint | 8581  
-<@1049297322045091940>
-
-**FAST Probationary Pilot:**  
-@Sgt.I Tonho Marreta | 8820  
-@Sgt.I Iris Deck Thomaz | 5931  
-@Ofc.III Renato Contardo | 10328  
-@Ofc.III Lima D. Deck | 35488
-          `);
-        break;
-
-      // Adicione as outras unidades (SWAT, DAF, MARY etc.) no mesmo formato
-      default:
-        embed.setDescription('❌ Unidade não encontrada.');
+    if (!embed) {
+      await interaction.channel.send('❌ Unidade não encontrada.');
+      return;
     }
 
-    // Envia a resposta no canal (visível para todos)
     await interaction.channel.send({ embeds: [embed] });
   }
 });
 
-// ======= 5) LOGIN =======
+// ======= 6) LOGIN =======
 client.login(process.env.BOT_TOKEN);
