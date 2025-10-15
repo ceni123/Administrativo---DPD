@@ -1,136 +1,136 @@
-// Importa a biblioteca principal do Discord
-const { Client, GatewayIntentBits } = require('discord.js');
+// index.js — versão completa com registro automático do /hierarquia
+const {
+  Client,
+  GatewayIntentBits,
+  Collection,
+  Events,
+  REST,
+  Routes,
+  EmbedBuilder,
+} = require('discord.js');
 
-// Cria a instância do bot
+// ======= 1) CLIENT =======
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+  intents: [GatewayIntentBits.Guilds], // para slash commands basta Guilds
 });
 
-// Quando o bot ligar
-client.once('ready', () => {
-  console.log(`✅ Bot conectado como ${client.user.tag}`);
+// Mapeamento de comandos
+client.commands = new Collection();
+
+// ======= 2) IMPORTA O COMANDO /hierarquia =======
+const hierarquia = require('./commands/hierarquia.js');
+client.commands.set(hierarquia.data.name, hierarquia);
+
+// ======= 3) REGISTRA OS SLASH COMMANDS AO INICIAR =======
+client.once(Events.ClientReady, async (c) => {
+  console.log(`✅ Bot conectado como ${c.user.tag}`);
+
+  const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
+  const commandsJson = [hierarquia.data.toJSON()];
+
+  try {
+    // Registro rápido NA GUILD (aparece em segundos)
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.APP_ID, process.env.GUILD_ID),
+      { body: commandsJson }
+    );
+    console.log('✅ /hierarquia registrado na guild com sucesso.');
+  } catch (err) {
+    console.error('❌ Erro ao registrar comandos:', err);
+  }
 });
 
-// Comandos básicos
-client.on('messageCreate', (message) => {
-  if (message.content === '!ping') {
-    message.reply('🏓 Pong!');
+// ======= 4) TRATA INTERAÇÕES =======
+client.on(Events.InteractionCreate, async (interaction) => {
+  // 4.a) Slash commands (ex: /hierarquia)
+  if (interaction.isChatInputCommand()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+    try {
+      await command.execute(interaction); // Executa o commands/hierarquia.js
+    } catch (err) {
+      console.error(err);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ content: '❌ Erro ao executar o comando.', ephemeral: true });
+      } else {
+        await interaction.reply({ content: '❌ Erro ao executar o comando.', ephemeral: true });
+      }
+    }
+    return;
   }
-  if (message.content === '!ajuda') {
-    message.reply('📋 Comandos disponíveis: !ping | !ajuda | !boasvindas');
-  }
-  if (message.content === '!boasvindas') {
-    message.reply('👮‍♂️ Bem-vindo à DPD! Servir e proteger!');
-  }
-});
 
-// Login com token
-client.login(process.env.BOT_TOKEN);
-// Importa o Embed (caixa de mensagem bonita)
-const { EmbedBuilder } = require('discord.js');
+  // 4.b) Select menu do /hierarquia
+  if (interaction.isStringSelectMenu() && interaction.customId === 'unidade_select') {
+    const escolha = interaction.values[0];
 
-// Evento que escuta quando alguém interage com o bot
-client.on('interactionCreate', async (interaction) => {
-  // Se a interação não for o menu, o bot ignora
-  if (!interaction.isStringSelectMenu()) return;
-
-  // Verifica se o menu é o do comando /hierarquia
-  if (interaction.customId === 'unidade_select') {
-    const escolha = interaction.values[0]; // pega a opção escolhida
-
-    // Cria um "Embed" (mensagem colorida e formatada)
     const embed = new EmbedBuilder()
-      .setColor(0x003366) // cor azul escuro
+      .setColor(0x003366)
       .setTitle('📋 Hierarquia DPD - ' + escolha.toUpperCase())
       .setFooter({ text: 'Departamento de Polícia de Detroit' })
-      .setTimestamp(); // mostra a data/hora automática
+      .setTimestamp();
 
-    // Aqui estão as hierarquias de cada unidade
     switch (escolha) {
       case 'detective':
-        embed.setDescription(`
-👮‍♂️ **Detective Unit**
+        embed.setDescription(`👮‍♂️ **Detective Unit**
 > • Chefe de Investigações  
 > • Detetive Sênior  
 > • Detetive  
 > • Investigador  
-> • Estagiário Forense
-        `);
+> • Estagiário Forense`);
         break;
-
       case 'swat':
-        embed.setDescription(`
-💥 **SWAT**
+        embed.setDescription(`💥 **SWAT**
 > • Comandante SWAT  
 > • Capitão Tático  
 > • Operador de Elite  
 > • Operador  
-> • Recruta Tático
-        `);
+> • Recruta Tático`);
         break;
-
       case 'fast':
-        embed.setDescription(`
-🚓 **FAST**
+        embed.setDescription(`🚓 **FAST**
 > • Comandante FAST  
 > • Supervisor  
 > • Agente Sênior  
 > • Agente  
-> • Recruta FAST
-        `);
+> • Recruta FAST`);
         break;
-
       case 'daf':
-        embed.setDescription(`
-🎯 **DAF**
+        embed.setDescription(`🎯 **DAF**
 > • Diretor DAF  
 > • Agente Fiscalizador  
 > • Inspetor  
 > • Analista  
-> • Estagiário DAF
-        `);
+> • Estagiário DAF`);
         break;
-
       case 'mary':
-        embed.setDescription(`
-🚨 **MARY**
+        embed.setDescription(`🚨 **MARY**
 > • Supervisor MARY  
 > • Policial Sênior  
 > • Policial  
-> • Recruta
-        `);
+> • Recruta`);
         break;
-
       case 'dafatiradores':
-        embed.setDescription(`
-🎯 **DAF Atiradores**
+        embed.setDescription(`🎯 **DAF Atiradores**
 > • Líder de Snipers  
 > • Sniper Especialista  
 > • Atirador  
-> • Estagiário de Tiro
-        `);
+> • Estagiário de Tiro`);
         break;
-
       case 'internal':
-        embed.setDescription(`
-🕵️ **Internal Investigation (Corregedoria)**
+        embed.setDescription(`🕵️ **Internal Investigation (Corregedoria)**
 > • Chefe da Corregedoria  
 > • Corregedor Sênior  
 > • Corregedor  
 > • Analista Disciplinar  
-> • Estagiário Interno
-        `);
+> • Estagiário Interno`);
         break;
-
       default:
         embed.setDescription('❌ Unidade não encontrada.');
     }
 
-    // Responde com o Embed formatado
     await interaction.reply({ embeds: [embed], ephemeral: true });
   }
 });
+
+// ======= 5) LOGIN =======
+client.login(process.env.BOT_TOKEN);
