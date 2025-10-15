@@ -23,6 +23,10 @@ client.commands = new Collection();
 const hierarquia = require('./commands/hierarquia.js');
 client.commands.set(hierarquia.data.name, hierarquia);
 
+const anonimo = require('./commands/anonimo.js');
+client.commands.set(anonimo.data.name, anonimo);
+
+
 // ======= 3) REGISTRA O COMANDO =======
 client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot conectado como ${c.user.tag}`);
