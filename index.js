@@ -1,4 +1,4 @@
-// index.js — BOT DPD com hierarquia dinâmica
+// index.js — BOT DPD com hierarquias automáticas
 const {
   Client,
   GatewayIntentBits,
@@ -9,7 +9,7 @@ const {
   EmbedBuilder,
 } = require('discord.js');
 
-// ======= 1) CONFIGURAÇÃO DO CLIENT =======
+// ======= 1) CLIENT =======
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -41,33 +41,79 @@ client.once(Events.ClientReady, async (c) => {
   }
 });
 
-// ======= 4) FUNÇÃO: GERA HIERARQUIA AUTOMÁTICA =======
+// ======= 4) FUNÇÃO: GERAR HIERARQUIA AUTOMÁTICA =======
 async function gerarHierarquia(guild, unidade) {
-  // Ajuste os nomes dos cargos conforme seu servidor
   const divisaoCargos = {
     FAST: [
-      'Supervisor FAST',
-      'Manager FAST',
-      'Sub-Manager FAST',
-      'Counselor FAST',
-      'Elite Pilot FAST',
-      'Veteran Pilot FAST',
-      'Official Pilot FAST',
-      'Probationary Pilot FAST',
+      'Supervisor Fast ⚡',
+      'Manager FAST ⚡',
+      '(FAST) Sub-Manager ⚡',
+      '(FAST) Counselor ⚡',
+      '(FAST) Elite Pilot ⚡',
+      '(FAST) Veteran Pilot ⚡',
+      '(FAST) Official Pilot ⚡',
+      '(FAST) Probationary Pilot ⚡',
+      '(FAST) Co-Pilot ⚡',
     ],
     SWAT: [
-      'Supervisor SWAT',
-      'Manager SWAT',
-      'Sub-Manager SWAT',
-      'Operador SWAT',
-      'Recruta SWAT',
+      '(S.W.A.T) Supervisor ☠️',
+      '(S.W.A.T) Gestor ☠️',
+      '(S.W.A.T) Coordenador ☠️',
+      '(S.W.A.T) Instrutor ☠️',
+      '(S.W.A.T) Operador ☠️',
+      '(S.W.A.T) Probatorio ☠️',
     ],
     DAF: [
-      'Supervisor DAF',
-      'Manager DAF',
-      'Sub-Manager DAF',
-      'Agente DAF',
-      'Recruta DAF',
+      'Supervisor D.A.F. 🏅',
+      'Manager D.A.F. 🏅',
+      '(DAF) Crew Chief 🏅',
+      '(DAF) Captain 🏅',
+      '(DAF) Lead Pilot 🏅',
+      '(DAF) Senior Pilot 🏅',
+      '(DAF) Officer Pilot 🏅',
+      '(DAF) Cadet Pilot 🏅',
+    ],
+    DAF_SHOOTERS: [
+      '(DAF) Shooter Captain 🏅',
+      '(DAF) Lead Shooter 🏅',
+      '(DAF) Senior Shooter 🏅',
+      '(DAF) Officer Shooter 🏅',
+      '(DAF) Cadet Shooter 🏅',
+    ],
+    MARY: [
+      'Supervisor MARY 🪶',
+      'Manager MARY 🪶',
+      '(MARY) Sub-Manager 🪶',
+      '(MARY) Conselheiro 🪶',
+      '(MARY) Braço Direito 🪶',
+      '(MARY) Piloto Elite 🪶',
+      '(MARY) Piloto Veterano 🪶',
+      '(MARY) Piloto Oficial 🪶',
+      '(MARY) Piloto Probatorio 🪶',
+    ],
+    DETECTIVE: [
+      'Supervisor Detective Unit 🔍',
+      'Manager Detective Unit 🔍',
+      '(D.U.) Detective-Lieutenant 🔍',
+      '(D.U.) Detective III 🔍',
+      '(D.U.) Detective II 🔍',
+      '(D.U.) Detective I 🔍',
+      '(D.U.) Prob. Detective 🔍',
+    ],
+    COT: [
+      '(COT) Director',
+      '(COT) Chief Officer',
+      '(COT) Supervisor',
+      '(COT) Agent',
+    ],
+    INTERNAL: [
+      'Supervisor Internal investigation ⚖️',
+      'Manager Internal investigation ⚖️',
+      '(I.N.V) Counselor ⚖️',
+      '(I.N.V) Senior ⚖️',
+      '(I.N.V) Official ⚖️',
+      '(I.N.V) Cadet ⚖️',
+      '(I.N.V) Probationary ⚖️',
     ],
   };
 
@@ -87,8 +133,19 @@ async function gerarHierarquia(guild, unidade) {
     descricao += `**${nomeCargo}:**\n${membros || '_Vazio_'}\n\n`;
   }
 
+  const cores = {
+    FAST: '#ff0000',
+    SWAT: '#000000',
+    DAF: '#007bff',
+    DAF_SHOOTERS: '#004080',
+    MARY: '#8000ff',
+    DETECTIVE: '#800080',
+    COT: '#ffcc00',
+    INTERNAL: '#ff6600',
+  };
+
   const embed = new EmbedBuilder()
-    .setColor(0x003366)
+    .setColor(cores[unidade.toUpperCase()] || '#003366')
     .setTitle(`📋 Hierarquia - ${unidade}`)
     .setDescription(descricao)
     .setFooter({ text: 'Departamento de Polícia de Detroit' })
@@ -97,9 +154,8 @@ async function gerarHierarquia(guild, unidade) {
   return embed;
 }
 
-// ======= 5) TRATA INTERAÇÕES =======
+// ======= 5) INTERAÇÕES =======
 client.on(Events.InteractionCreate, async (interaction) => {
-  // Slash commands
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -116,7 +172,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // Menu de seleção do /hierarquia
   if (interaction.isStringSelectMenu() && interaction.customId === 'unidade_select') {
     await interaction.deferUpdate();
     const unidade = interaction.values[0];
