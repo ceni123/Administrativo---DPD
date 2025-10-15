@@ -1,4 +1,4 @@
-// index.js — versão completa com registro automático do /hierarquia
+// index.js — versão completa e corrigida
 const {
   Client,
   GatewayIntentBits,
@@ -11,7 +11,7 @@ const {
 
 // ======= 1) CLIENT =======
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds], // para slash commands basta Guilds
+  intents: [GatewayIntentBits.Guilds], // Slash commands precisam apenas de Guilds
 });
 
 // Mapeamento de comandos
@@ -29,7 +29,6 @@ client.once(Events.ClientReady, async (c) => {
   const commandsJson = [hierarquia.data.toJSON()];
 
   try {
-    // Registro rápido NA GUILD (aparece em segundos)
     await rest.put(
       Routes.applicationGuildCommands(process.env.APP_ID, process.env.GUILD_ID),
       { body: commandsJson }
@@ -42,12 +41,12 @@ client.once(Events.ClientReady, async (c) => {
 
 // ======= 4) TRATA INTERAÇÕES =======
 client.on(Events.InteractionCreate, async (interaction) => {
-  // 4.a) Slash commands (ex: /hierarquia)
+  // 4.a) Slash commands (/hierarquia)
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
     try {
-      await command.execute(interaction); // Executa o commands/hierarquia.js
+      await command.execute(interaction);
     } catch (err) {
       console.error(err);
       if (interaction.deferred || interaction.replied) {
@@ -59,18 +58,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // 4.b) Select menu do /hierarquia
- client.on(Events.InteractionCreate, async (interaction) => {
-  // ... (mantenha o bloco dos slash commands acima)
-
-  // Seleção do menu do /hierarquia
+  // 4.b) Seleção do menu /hierarquia
   if (interaction.isStringSelectMenu() && interaction.customId === 'unidade_select') {
-    // Como o menu foi enviado em mensagem ephemeral, fazemos deferUpdate()
-    // para “confirmar” a interação sem criar outra mensagem ephemeral.
-    await interaction.deferUpdate();
+    await interaction.deferUpdate(); // Fecha a interação ephemeral
 
     const escolha = interaction.values[0];
-
     const embed = new EmbedBuilder()
       .setColor(0x003366)
       .setTitle('📋 Hierarquia DPD - ' + escolha.toUpperCase())
@@ -82,7 +74,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         embed
           .setTitle('Hierarquia - FAST')
           .setColor('#ff0000')
-          .setThumbnail('LINK_DO_BRASAO_FAST.png')
+          .setThumbnail('https://i.imgur.com/lpM5G52.png') // substitua pelo brasão correto
           .setDescription(`
 **Supervisor Fast:**  
 @Insp. Julio Montenegro | 10052
@@ -115,17 +107,15 @@ Vazio
           `);
         break;
 
-      // ...suas outras unidades (swat, daf, mary, etc.)
+      // Adicione as outras unidades (SWAT, DAF, MARY etc.) no mesmo formato
       default:
         embed.setDescription('❌ Unidade não encontrada.');
     }
 
-    // 🔸 IMPORTANTE: enviar a resposta como MENSAGEM DO CANAL (pública)
+    // Envia a resposta no canal (visível para todos)
     await interaction.channel.send({ embeds: [embed] });
-    // (não use interaction.reply aqui, e não passe ephemeral:true)
   }
 });
-
 
 // ======= 5) LOGIN =======
 client.login(process.env.BOT_TOKEN);
