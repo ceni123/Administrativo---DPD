@@ -32,7 +32,11 @@ client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot conectado como ${c.user.tag}`);
 
   const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
-  const commandsJson = [hierarquia.data.toJSON()];
+  const commandsJson = [
+  hierarquia.data.toJSON(),
+  anonimo.data.toJSON()
+];
+
 
   try {
     await rest.put(
