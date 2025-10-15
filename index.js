@@ -60,7 +60,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   // 4.b) Select menu do /hierarquia
+ client.on(Events.InteractionCreate, async (interaction) => {
+  // ... (mantenha o bloco dos slash commands acima)
+
+  // Seleção do menu do /hierarquia
   if (interaction.isStringSelectMenu() && interaction.customId === 'unidade_select') {
+    // Como o menu foi enviado em mensagem ephemeral, fazemos deferUpdate()
+    // para “confirmar” a interação sem criar outra mensagem ephemeral.
+    await interaction.deferUpdate();
+
     const escolha = interaction.values[0];
 
     const embed = new EmbedBuilder()
@@ -70,67 +78,54 @@ client.on(Events.InteractionCreate, async (interaction) => {
       .setTimestamp();
 
     switch (escolha) {
-      case 'detective':
-        embed.setDescription(`👮‍♂️ **Detective Unit**
-> • Chefe de Investigações  
-> • Detetive Sênior  
-> • Detetive  
-> • Investigador  
-> • Estagiário Forense`);
-        break;
-      case 'swat':
-        embed.setDescription(`💥 **SWAT**
-> • Comandante SWAT  
-> • Capitão Tático  
-> • Operador de Elite  
-> • Operador  
-> • Recruta Tático`);
-        break;
       case 'fast':
-        embed.setDescription(`🚓 **FAST**
-> • Comandante FAST  
-> • Supervisor  
-> • Agente Sênior  
-> • Agente  
-> • Recruta FAST`);
+        embed
+          .setTitle('Hierarquia - FAST')
+          .setColor('#ff0000')
+          .setThumbnail('LINK_DO_BRASAO_FAST.png')
+          .setDescription(`
+**Supervisor Fast:**  
+@Insp. Julio Montenegro | 10052
+
+**Manager FAST:**  
+@Capt. Lyra Black | 10822
+
+**FAST Sub-Manager:**  
+@Sgt.II Hector Jones | 11037
+
+**FAST Counselor:**  
+@Sgt.I Aiden Caldwell | 9270  
+@Sgt.II Deckard S. | 6203
+
+**FAST Elite Pilot:**  
+@Sgt.II Pedro Escobar | 11337
+
+**FAST Veteran Pilot:**  
+Vazio
+
+**FAST Official Pilot:**  
+@Sgt.I Will Toussaint | 8581  
+<@1049297322045091940>
+
+**FAST Probationary Pilot:**  
+@Sgt.I Tonho Marreta | 8820  
+@Sgt.I Iris Deck Thomaz | 5931  
+@Ofc.III Renato Contardo | 10328  
+@Ofc.III Lima D. Deck | 35488
+          `);
         break;
-      case 'daf':
-        embed.setDescription(`🎯 **DAF**
-> • Diretor DAF  
-> • Agente Fiscalizador  
-> • Inspetor  
-> • Analista  
-> • Estagiário DAF`);
-        break;
-      case 'mary':
-        embed.setDescription(`🚨 **MARY**
-> • Supervisor MARY  
-> • Policial Sênior  
-> • Policial  
-> • Recruta`);
-        break;
-      case 'dafatiradores':
-        embed.setDescription(`🎯 **DAF Atiradores**
-> • Líder de Snipers  
-> • Sniper Especialista  
-> • Atirador  
-> • Estagiário de Tiro`);
-        break;
-      case 'internal':
-        embed.setDescription(`🕵️ **Internal Investigation (Corregedoria)**
-> • Chefe da Corregedoria  
-> • Corregedor Sênior  
-> • Corregedor  
-> • Analista Disciplinar  
-> • Estagiário Interno`);
-        break;
+
+      // ...suas outras unidades (swat, daf, mary, etc.)
       default:
         embed.setDescription('❌ Unidade não encontrada.');
     }
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    // 🔸 IMPORTANTE: enviar a resposta como MENSAGEM DO CANAL (pública)
+    await interaction.channel.send({ embeds: [embed] });
+    // (não use interaction.reply aqui, e não passe ephemeral:true)
   }
 });
+
 
 // ======= 5) LOGIN =======
 client.login(process.env.BOT_TOKEN);
