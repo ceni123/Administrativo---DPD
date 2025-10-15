@@ -31,7 +31,7 @@ module.exports = {
     await interaction.reply({
       content: 'Escolha abaixo a unidade para ver a hierarquia:',
       components: [row],
-      ephemeral: false, // deixa visível para todos
+      ephemeral: true, // deixa visível para todos
     });
   },
 };
