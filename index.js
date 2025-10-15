@@ -19,12 +19,15 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// ======= 2) IMPORTA O COMANDO /hierarquia =======
+// ======= 2) IMPORTA O COMANDO  =======
 const hierarquia = require('./commands/hierarquia.js');
 client.commands.set(hierarquia.data.name, hierarquia);
 
 const anonimo = require('./commands/anonimo.js');
 client.commands.set(anonimo.data.name, anonimo);
+
+const mensagem = require('./commands/mensagem.js');
+client.commands.set(mensagem.data.name, mensagem);
 
 
 // ======= 3) REGISTRA O COMANDO =======
@@ -32,10 +35,12 @@ client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot conectado como ${c.user.tag}`);
 
   const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
-  const commandsJson = [
+ const commandsJson = [
   hierarquia.data.toJSON(),
-  anonimo.data.toJSON()
+  anonimo.data.toJSON(),
+  mensagem.data.toJSON()
 ];
+
 
 
   try {
