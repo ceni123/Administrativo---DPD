@@ -1,14 +1,15 @@
-const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('hierarquia')
-    .setDescription('Escolha a unidade para ver a hierarquia'),
+    .setDescription('Mostra a hierarquia das unidades da DPD'),
 
   async execute(interaction) {
+    // Cria o menu suspenso
     const menu = new StringSelectMenuBuilder()
       .setCustomId('unidade_select')
-      .setPlaceholder('Escolha a unidade')
+      .setPlaceholder('Selecione a unidade para ver a hierarquia')
       .addOptions([
         { label: 'Detective Unit', value: 'detective' },
         { label: 'SWAT', value: 'swat' },
@@ -22,9 +23,9 @@ module.exports = {
     const row = new ActionRowBuilder().addComponents(menu);
 
     await interaction.reply({
-      content: 'Escolha a unidade para visualizar a hierarquia:',
+      content: 'Escolha a unidade abaixo para ver a hierarquia completa:',
       components: [row],
-      ephemeral: true, // só visível pra quem usou o comando
+      ephemeral: true
     });
   },
 };
