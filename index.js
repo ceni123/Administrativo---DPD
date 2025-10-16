@@ -1,4 +1,4 @@
-// index.js — BOT DPD completo (Hierarquia + Anônimo + Mensagem + Denúncia Atualizada)
+// index.js — BOT DPD (Hierarquia + Anônimo + Mensagem + Denúncia com BOTÃO reutilizável)
 
 const {
   Client,
@@ -10,6 +10,9 @@ const {
   EmbedBuilder,
   PermissionFlagsBits,
   ChannelType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require('discord.js');
 
 // ======= 1) CLIENT =======
@@ -87,93 +90,83 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // ===== SELECT MENU DE HIERARQUIA =====
-  if (interaction.isStringSelectMenu() && interaction.customId === 'unidade_select') {
-    await interaction.deferUpdate();
-    const unidade = interaction.values[0];
-    const embed = await gerarHierarquia(interaction.guild, unidade);
+  // ===== BOTÃO DE DENÚNCIA =====
+  if (interaction.isButton() && interaction.customId === 'abrir_denuncia') {
+    const categoria = interaction.guild.channels.cache.find(
+      (c) =>
+        c.name.toLowerCase().includes("ticket´s i.n.v") &&
+        c.type === ChannelType.GuildCategory
+    );
 
-    if (!embed) {
-      await interaction.channel.send('❌ Unidade não encontrada.');
+    if (!categoria) {
+      await interaction.reply({
+        content: '❌ Categoria **"Ticket´s I.N.V"** não encontrada no servidor.',
+        ephemeral: true,
+      });
       return;
     }
 
-    await interaction.channel.send({ embeds: [embed] });
-  }
+    const randomId = Math.floor(Math.random() * 100000);
 
-  // ===== SELECT MENU DE DENÚNCIA =====
-  if (interaction.isStringSelectMenu() && interaction.customId === 'denuncia_menu') {
-    const escolha = interaction.values[0];
+    // Cria canal de denúncia
+    const canal = await interaction.guild.channels.create({
+      name: `denuncia-${interaction.user.username}-${randomId}`,
+      type: ChannelType.GuildText,
+      parent: categoria.id,
+      topic: `Denúncia aberta por ${interaction.user.tag}`,
+      permissionOverwrites: [
+        {
+          id: interaction.guild.roles.everyone,
+          deny: [PermissionFlagsBits.ViewChannel],
+        },
+        {
+          id: interaction.user.id,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.ReadMessageHistory,
+          ],
+        },
+      ],
+    });
 
-    if (escolha === 'contra_oficial') {
-      // 🔍 Procura a categoria pelo nome (sem precisar de ID fixo)
-      const categoria = interaction.guild.channels.cache.find(
-        (c) =>
-          c.name.toLowerCase().includes("ticket´s i.n.v") &&
-          c.type === ChannelType.GuildCategory
-      );
+    await canal.send(
+      `📢 **Denúncia iniciada por:** ${interaction.user}\n\nPor favor, descreva a denúncia abaixo com o máximo de detalhes possíveis.`
+    );
 
-      if (!categoria) {
-        await interaction.reply({
-          content: '❌ Categoria **"Ticket´s I.N.V"** não encontrada no servidor.',
-          ephemeral: true,
-        });
-        return;
-      }
-
-      // Gera número aleatório para permitir múltiplas denúncias
-      const randomId = Math.floor(Math.random() * 100000);
-
-      // Cria o canal de denúncia dentro da categoria encontrada
-      const canal = await interaction.guild.channels.create({
-        name: `denuncia-${interaction.user.username}-${randomId}`,
-        type: ChannelType.GuildText,
-        parent: categoria.id,
-        topic: `Denúncia aberta por ${interaction.user.tag}`,
-        permissionOverwrites: [
-          {
-            id: interaction.guild.roles.everyone,
-            deny: [PermissionFlagsBits.ViewChannel],
-          },
-          {
-            id: interaction.user.id,
-            allow: [
-              PermissionFlagsBits.ViewChannel,
-              PermissionFlagsBits.SendMessages,
-              PermissionFlagsBits.ReadMessageHistory,
-            ],
-          },
-          // (opcional) cargo da I.N.V.
-          // {
-          //   id: 'ID_DO_CARGO_DA_INV',
-          //   allow: [
-          //     PermissionFlagsBits.ViewChannel,
-          //     PermissionFlagsBits.SendMessages,
-          //     PermissionFlagsBits.ReadMessageHistory,
-          //     PermissionFlagsBits.ManageMessages,
-          //   ],
-          // },
-        ],
-      });
-
-      // Mensagem inicial dentro do ticket
-      await canal.send(
-        `📢 **Denúncia iniciada por:** ${interaction.user}\n\nPor favor, descreva a denúncia abaixo com o máximo de detalhes possíveis.`
-      );
-
-      // Resposta privada para quem abriu
-      await interaction.reply({
-        content: `✅ Canal de denúncia criado com sucesso: ${canal}`,
-        ephemeral: true,
-      });
-    }
+    await interaction.reply({
+      content: `✅ Canal de denúncia criado com sucesso: ${canal}`,
+      ephemeral: true,
+    });
   }
 });
 
-// ======= 6) LOGIN + KEEP ALIVE =======
+// ======= 6) COMANDO /denuncia MOSTRA O PAINEL FIXO =======
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== 'denuncia') return;
+
+  const embed = new EmbedBuilder()
+    .setColor('#D32F2F')
+    .setTitle('Central do Internal Investigation')
+    .setDescription(
+      'Nessa seção, você pode realizar denúncias para a corregedoria.\n\nClique no botão abaixo para abrir um ticket de denúncia.'
+    )
+    .setFooter({ text: 'Departamento de Polícia de Detroit' });
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('abrir_denuncia')
+      .setLabel('⚖️ Abrir denúncia contra oficiais')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  await interaction.reply({ embeds: [embed], components: [row] });
+});
+
+// ======= 7) LOGIN + KEEP ALIVE =======
 client.login(process.env.BOT_TOKEN);
 
-// Mantém o bot ativo no Render (impede desligamento automático)
 setInterval(() => {
   console.log('✅ Bot ativo e conectado...');
-}, 60000); // repete a cada 60 segundos
+}, 60000);
