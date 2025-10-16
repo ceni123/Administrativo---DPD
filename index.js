@@ -1,4 +1,4 @@
-// index.js — BOT DPD completo (Hierarquia + Anônimo + Mensagem + Denúncia)
+// index.js — BOT DPD completo (Hierarquia + Anônimo + Mensagem + Denúncia atualizada)
 
 const {
   Client,
@@ -9,6 +9,7 @@ const {
   Routes,
   EmbedBuilder,
   PermissionFlagsBits,
+  ChannelType,
 } = require('discord.js');
 
 // ======= 1) CLIENT =======
@@ -57,8 +58,6 @@ client.once(Events.ClientReady, async (c) => {
 
 // ======= 4) FUNÇÃO AUXILIAR (hierarquia) =======
 async function gerarHierarquia(guild, unidade) {
-  // Aqui você pode adaptar para ler cargos do servidor
-  // ou usar embeds prontos por unidade
   const embed = new EmbedBuilder()
     .setColor('#003366')
     .setTitle(`📋 Hierarquia DPD - ${unidade.toUpperCase()}`)
@@ -107,41 +106,45 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const escolha = interaction.values[0];
 
     if (escolha === 'contra_oficial') {
-      // Procura categoria "Ticket´s I.N.V"
-      const categoria = interaction.guild.channels.cache.find(
-        (c) => c.name === "Ticket´s I.N.V" && c.type === 4 // type 4 = categoria
-      );
+      // ID da categoria "Ticket´s I.N.V" (substitua pelo ID real)
+      const CATEGORIA_ID = '1428506685743567000';
 
-      if (!categoria) {
-        await interaction.reply({
-          content: '❌ Categoria "Ticket´s I.N.V" não encontrada no servidor.',
-          ephemeral: true,
-        });
-        return;
-      }
+      // Gera número aleatório para permitir múltiplas denúncias
+      const randomId = Math.floor(Math.random() * 100000);
 
-      // Cria canal privado
+      // Cria canal privado (ticket)
       const canal = await interaction.guild.channels.create({
-        name: `denuncia-${interaction.user.username}`,
-        type: 0, // Canal de texto
-        parent: categoria.id,
+        name: `denuncia-${interaction.user.username}-${randomId}`,
+        type: ChannelType.GuildText,
+        parent: CATEGORIA_ID,
+        topic: `Denúncia aberta por ${interaction.user.tag}`,
         permissionOverwrites: [
           {
-            id: interaction.guild.id, // Todos
+            id: interaction.guild.id, // todos
             deny: [PermissionFlagsBits.ViewChannel],
           },
           {
-            id: interaction.user.id, // Autor
+            id: interaction.user.id, // autor
             allow: [
               PermissionFlagsBits.ViewChannel,
               PermissionFlagsBits.SendMessages,
               PermissionFlagsBits.ReadMessageHistory,
             ],
           },
+          // opcional: adicione aqui o ID do cargo da I.N.V. para ver todos os tickets
+          // {
+          //   id: 'ID_DO_CARGO_DA_INV',
+          //   allow: [
+          //     PermissionFlagsBits.ViewChannel,
+          //     PermissionFlagsBits.SendMessages,
+          //     PermissionFlagsBits.ReadMessageHistory,
+          //     PermissionFlagsBits.ManageMessages,
+          //   ],
+          // },
         ],
       });
 
-      // Mensagem inicial no canal
+      // Mensagem inicial
       await canal.send(
         `📢 **Denúncia iniciada por:** ${interaction.user}\n\nPor favor, descreva a denúncia abaixo com o máximo de detalhes possíveis.`
       );
@@ -154,10 +157,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// ======= 6) LOGIN =======
+// ======= 6) LOGIN + KEEP ALIVE =======
 client.login(process.env.BOT_TOKEN);
-// Mantém o bot ativo no Render (impede que o Render desligue o processo)
+
+// Mantém o bot ativo no Render (impede desligamento automático)
 setInterval(() => {
   console.log('✅ Bot ativo e conectado...');
-}, 60000); // repete a cada 60 segundos (1 minuto)
-
+}, 60000); // repete a cada 60 segundos
