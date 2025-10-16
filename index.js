@@ -156,3 +156,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // ======= 6) LOGIN =======
 client.login(process.env.BOT_TOKEN);
+// Mantém o bot ativo no Render (impede que o Render desligue o processo)
+setInterval(() => {
+  console.log('✅ Bot ativo e conectado...');
+}, 60000); // repete a cada 60 segundos (1 minuto)
+
