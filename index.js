@@ -1,4 +1,4 @@
-// index.js — BOT Administrativo DPD completo (Hierarquia + Anônimo + Mensagem + Denúncia)
+// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia)
 
 const {
   Client,
@@ -15,7 +15,10 @@ const {
 
 // ======= 1) CLIENT =======
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+  ],
 });
 
 client.commands = new Collection();
@@ -48,7 +51,7 @@ client.once(Events.ClientReady, async (c) => {
       Routes.applicationGuildCommands(process.env.APP_ID, process.env.GUILD_ID),
       { body: commandsJson }
     );
-    console.log("✅ Todos os comandos foram registrados com sucesso.");
+    console.log("✅ Todos os comandos foram registrados na guild com sucesso.");
   } catch (err) {
     console.error("❌ Erro ao registrar comandos:", err);
   }
@@ -56,30 +59,41 @@ client.once(Events.ClientReady, async (c) => {
 
 // ======= 4) INTERAÇÕES =======
 client.on(Events.InteractionCreate, async (interaction) => {
-  // Slash commands
+  // ===== SLASH COMMANDS =====
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
+
     try {
       await command.execute(interaction);
     } catch (err) {
       console.error(err);
-      const reply = {
-        content: "❌ Erro ao executar o comando.",
-        flags: MessageFlags.Ephemeral,
-      };
-      if (interaction.deferred || interaction.replied)
-        await interaction.followUp(reply);
-      else await interaction.reply(reply);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          content: "❌ Erro ao executar o comando.",
+          flags: MessageFlags.Ephemeral,
+        });
+      } else {
+        await interaction.reply({
+          content: "❌ Erro ao executar o comando.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
     }
     return;
   }
 
-  // ===== MENU DE HIERARQUIA =====
+  // ===== SELECT MENU DE HIERARQUIA =====
   if (interaction.isStringSelectMenu() && interaction.customId === "unidade_select") {
     await interaction.deferUpdate();
     const unidade = interaction.values[0];
-    const embed = hierarquia.gerarHierarquiaEmbed(unidade);
+    const embed = await hierarquia.gerarHierarquiaEmbed(interaction.guild, unidade);
+
+    if (!embed) {
+      await interaction.channel.send("❌ Unidade não encontrada.");
+      return;
+    }
+
     await interaction.channel.send({ embeds: [embed] });
   }
 
