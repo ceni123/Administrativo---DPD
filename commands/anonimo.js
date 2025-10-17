@@ -14,7 +14,7 @@ module.exports = {
     const texto = interaction.options.getString('mensagem', true);
 
     try {
-      await user.send(`📩 **Mensagem anônima:**\n${texto}`);
+      await user.send(`📩 **Mensagem Oficial DPD:**\n${texto}`);
       await interaction.reply({
         content: `✅ Mensagem enviada no DM de **${user.tag}**.`,
         flags: MessageFlags.Ephemeral,
