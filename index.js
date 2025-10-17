@@ -1,4 +1,4 @@
-// index.js — BOT DPD (Hierarquia + Anônimo + Mensagem + Denúncia com BOTÃO reutilizável)
+// index.js — BOT DPD (Hierarquia + Anônimo + Mensagem + Denúncia com BOTÃO reutilizável, compatível com Node 22)
 
 const {
   Client,
@@ -13,6 +13,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  MessageFlags,
 } = require('discord.js');
 
 // ======= 1) CLIENT =======
@@ -82,9 +83,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } catch (err) {
       console.error(err);
       if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({ content: '❌ Erro ao executar o comando.', ephemeral: true });
+        await interaction.followUp({
+          content: '❌ Erro ao executar o comando.',
+          flags: MessageFlags.Ephemeral,
+        });
       } else {
-        await interaction.reply({ content: '❌ Erro ao executar o comando.', ephemeral: true });
+        await interaction.reply({
+          content: '❌ Erro ao executar o comando.',
+          flags: MessageFlags.Ephemeral,
+        });
       }
     }
     return;
@@ -101,7 +108,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (!categoria) {
       await interaction.reply({
         content: '❌ Categoria **"Ticket´s I.N.V"** não encontrada no servidor.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -136,35 +143,36 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     await interaction.reply({
       content: `✅ Canal de denúncia criado com sucesso: ${canal}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  // ===== COMANDO /denuncia MOSTRA O PAINEL FIXO =====
+  if (interaction.isChatInputCommand() && interaction.commandName === 'denuncia') {
+    const embed = new EmbedBuilder()
+      .setColor('#D32F2F')
+      .setTitle('Central do Internal Investigation')
+      .setDescription(
+        'Nessa seção, você pode realizar denúncias para a corregedoria.\n\nClique no botão abaixo para abrir um ticket de denúncia.'
+      )
+      .setFooter({ text: 'Departamento de Polícia de Detroit' });
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('abrir_denuncia')
+        .setLabel('⚖️ Abrir denúncia contra oficiais')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    await interaction.reply({
+      embeds: [embed],
+      components: [row],
+      flags: MessageFlags.Ephemeral,
     });
   }
 });
 
-// ======= 6) COMANDO /denuncia MOSTRA O PAINEL FIXO =======
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName !== 'denuncia') return;
-
-  const embed = new EmbedBuilder()
-    .setColor('#D32F2F')
-    .setTitle('Central do Internal Investigation')
-    .setDescription(
-      'Nessa seção, você pode realizar denúncias para a corregedoria.\n\nClique no botão abaixo para abrir um ticket de denúncia.'
-    )
-    .setFooter({ text: 'Departamento de Polícia de Detroit' });
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('abrir_denuncia')
-      .setLabel('⚖️ Abrir denúncia contra oficiais')
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  await interaction.reply({ embeds: [embed], components: [row] });
-});
-
-// ======= 7) LOGIN + KEEP ALIVE =======
+// ======= 6) LOGIN + KEEP ALIVE =======
 client.login(process.env.BOT_TOKEN);
 
 setInterval(() => {
