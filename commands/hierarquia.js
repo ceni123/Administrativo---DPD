@@ -1,37 +1,27 @@
-// Importa as ferramentas do Discord.js
-const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 
-// Exporta o comando para o bot reconhecer
 module.exports = {
-  // Cria o comando /hierarquia
   data: new SlashCommandBuilder()
     .setName('hierarquia')
-    .setDescription('Escolha a unidade da DPD para ver a hierarquia'),
+    .setDescription('Exibe a hierarquia de uma unidade do DPD.'),
 
-  // O que o bot faz quando o comando é usado
   async execute(interaction) {
-    // Cria o menu suspenso (dropdown)
     const menu = new StringSelectMenuBuilder()
       .setCustomId('unidade_select')
-      .setPlaceholder('Escolha a unidade') // texto que aparece antes de escolher
+      .setPlaceholder('Selecione uma unidade...')
       .addOptions([
-        { label: 'Detective Unit', value: 'detective' },
-        { label: 'SWAT', value: 'swat' },
-        { label: 'FAST', value: 'fast' },
-        { label: 'DAF', value: 'daf' },
-        { label: 'MARY', value: 'mary' },
-        { label: 'DAF Atiradores', value: 'dafatiradores' },
-        { label: 'Internal Investigation', value: 'internal' },
+        { label: 'FAST', value: 'fast', description: 'Força Aérea Especial' },
+        { label: 'SWAT', value: 'swat', description: 'Unidade Tática' },
       ]);
 
-    // Coloca o menu dentro de uma “linha” para o Discord entender
     const row = new ActionRowBuilder().addComponents(menu);
 
-    // Manda a mensagem com o menu
-    await interaction.reply({
-      content: 'Escolha abaixo a unidade para ver a hierarquia:',
-      components: [row],
-      ephemeral: true, // deixa visível para todos
-    });
+    const embed = new EmbedBuilder()
+      .setColor('#003366')
+      .setTitle('📋 Hierarquia DPD')
+      .setDescription('Selecione abaixo a unidade para visualizar a hierarquia.')
+      .setFooter({ text: 'Departamento de Polícia de Detroit' });
+
+    await interaction.reply({ embeds: [embed], components: [row] });
   },
 };
