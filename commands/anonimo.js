@@ -1,43 +1,28 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('anonimo')
-    .setDescription('Envia uma mensagem anônima no privado de um usuário.')
-    .addUserOption(option =>
-      option
-        .setName('destinatario')
-        .setDescription('Selecione o usuário que receberá a mensagem.')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option
-        .setName('mensagem')
-        .setDescription('Digite a mensagem que será enviada de forma anônima.')
-        .setRequired(true)
-    ),
+    .setDescription('Envia uma mensagem anônima no DM de alguém.')
+    .addUserOption(o =>
+      o.setName('para').setDescription('Destinatário').setRequired(true))
+    .addStringOption(o =>
+      o.setName('mensagem').setDescription('Conteúdo a ser enviado').setRequired(true)),
 
   async execute(interaction) {
-    const destinatario = interaction.options.getUser('destinatario');
-    const mensagem = interaction.options.getString('mensagem');
+    const user = interaction.options.getUser('para', true);
+    const texto = interaction.options.getString('mensagem', true);
 
     try {
-      // Envia DM ao destinatário
-      await destinatario.send(`📩 **Mensagem Oficial DPD:**\n> ${mensagem}`);
-
-      // Responde de forma privada ao autor do comando
+      await user.send(`📩 **Mensagem anônima:**\n${texto}`);
       await interaction.reply({
-        content: `✅ Mensagem anônima enviada com sucesso para **${destinatario.tag}**.`,
-        ephemeral: true,
+        content: `✅ Mensagem enviada no DM de **${user.tag}**.`,
+        flags: MessageFlags.Ephemeral,
       });
-
-      console.log(`Mensagem anônima enviada para ${destinatario.tag} por ${interaction.user.tag}`);
-    } catch (error) {
-      console.error('Erro ao enviar mensagem anônima:', error);
+    } catch {
       await interaction.reply({
-        content:
-          '❌ Não consegui enviar a mensagem. O usuário pode ter o recebimento de mensagens privadas desativado.',
-        ephemeral: true,
+        content: `❌ Não foi possível enviar DM para **${user.tag}** (provavelmente fechado).`,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },
