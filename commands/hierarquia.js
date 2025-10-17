@@ -34,7 +34,7 @@ const DIVISOES = {
   },
 
   mary: {
-    titulo: "MARY 🚁",
+    titulo: "MARY 🏍️",
     cor: "#0aa1ff",
     brasao: "",
     patentes: [
