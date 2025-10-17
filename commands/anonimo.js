@@ -1,27 +1,46 @@
-const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+// commands/anonimo.js — envia UMA mensagem anônima para o destinatário
+
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('anonimo')
-    .setDescription('Envia uma mensagem anônima no DM de alguém.')
+    .setDescription('Envia uma mensagem anônima no DM de um usuário.')
     .addUserOption(o =>
-      o.setName('para').setDescription('Destinatário').setRequired(true))
+      o.setName('para')
+        .setDescription('Destinatário da mensagem')
+        .setRequired(true)
+    )
     .addStringOption(o =>
-      o.setName('mensagem').setDescription('Conteúdo a ser enviado').setRequired(true)),
+      o.setName('mensagem')
+        .setDescription('Conteúdo a ser enviado de forma anônima')
+        .setRequired(true)
+    ),
 
   async execute(interaction) {
-    const user = interaction.options.getUser('para', true);
+    const destino = interaction.options.getUser('para', true);
     const texto = interaction.options.getString('mensagem', true);
 
+    const embed = new EmbedBuilder()
+      .setColor('#2b2d31')
+      .setTitle('📩 Mensagem anônima')
+      .setDescription(texto)
+      .setFooter({ text: 'Departamento de Polícia de Detroit' })
+      .setTimestamp();
+
     try {
-      await user.send(`📩 **Mensagem Oficial DPD:**\n${texto}`);
+      // 👉 Envia UMA ÚNICA mensagem ao destinatário
+      await destino.send({ embeds: [embed] });
+
+      // Confirmação só para quem executou o comando
       await interaction.reply({
-        content: `✅ Mensagem enviada no DM de **${user.tag}**.`,
+        content: `✅ Mensagem anônima enviada para **${destino.tag}**.`,
         flags: MessageFlags.Ephemeral,
       });
-    } catch {
+    } catch (err) {
+      console.error('Erro ao enviar DM:', err);
       await interaction.reply({
-        content: `❌ Não foi possível enviar DM para **${user.tag}** (provavelmente fechado).`,
+        content: `❌ Não consegui enviar DM para **${destino.tag}** (provavelmente está fechado).`,
         flags: MessageFlags.Ephemeral,
       });
     }
