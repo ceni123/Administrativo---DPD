@@ -1,4 +1,4 @@
-// index.js — BOT DPD (Hierarquia + Anônimo + Mensagem + Denúncia com BOTÃO reutilizável, compatível com Node 22)
+// index.js — BOT DPD (Hierarquia + Anônimo + Mensagem + Denúncia com BOTÃO reutilizável, 100% atualizado)
 
 const {
   Client,
@@ -20,7 +20,7 @@ const {
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers, // Necessário para ler cargos
+    GatewayIntentBits.GuildMembers,
   ],
 });
 
@@ -97,6 +97,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
+  // ===== SELECT MENU DE HIERARQUIA =====
+  if (interaction.isStringSelectMenu() && interaction.customId === 'unidade_select') {
+    await interaction.deferUpdate();
+    const unidade = interaction.values[0];
+    const embed = await gerarHierarquia(interaction.guild, unidade);
+
+    if (!embed) {
+      await interaction.channel.send('❌ Unidade não encontrada.');
+      return;
+    }
+
+    await interaction.channel.send({ embeds: [embed] });
+  }
+
   // ===== BOTÃO DE DENÚNCIA =====
   if (interaction.isButton() && interaction.customId === 'abrir_denuncia') {
     const categoria = interaction.guild.channels.cache.find(
@@ -115,7 +129,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     const randomId = Math.floor(Math.random() * 100000);
 
-    // Cria canal de denúncia
     const canal = await interaction.guild.channels.create({
       name: `denuncia-${interaction.user.username}-${randomId}`,
       type: ChannelType.GuildText,
@@ -143,30 +156,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     await interaction.reply({
       content: `✅ Canal de denúncia criado com sucesso: ${canal}`,
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-  // ===== COMANDO /denuncia MOSTRA O PAINEL FIXO =====
-  if (interaction.isChatInputCommand() && interaction.commandName === 'denuncia') {
-    const embed = new EmbedBuilder()
-      .setColor('#D32F2F')
-      .setTitle('Central do Internal Investigation')
-      .setDescription(
-        'Nessa seção, você pode realizar denúncias para a corregedoria.\n\nClique no botão abaixo para abrir um ticket de denúncia.'
-      )
-      .setFooter({ text: 'Departamento de Polícia de Detroit' });
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('abrir_denuncia')
-        .setLabel('⚖️ Abrir denúncia contra oficiais')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    await interaction.reply({
-      embeds: [embed],
-      components: [row],
       flags: MessageFlags.Ephemeral,
     });
   }
