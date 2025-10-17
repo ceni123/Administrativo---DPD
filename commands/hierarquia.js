@@ -1,30 +1,30 @@
-// commands/hierarquia.js — versão completa com todas as divisões DPD
+// commands/hierarquia.js — Hierarquia automática por cargos (layout completo e com menções)
 
 const {
   SlashCommandBuilder,
-  EmbedBuilder,
   StringSelectMenuBuilder,
   ActionRowBuilder,
+  EmbedBuilder,
   MessageFlags,
 } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("hierarquia")
-    .setDescription("Exibe a hierarquia completa das divisões do DPD."),
+    .setDescription("Exibe automaticamente a hierarquia de cada divisão do DPD com base nos cargos do servidor."),
 
   async execute(interaction) {
     const menu = new StringSelectMenuBuilder()
       .setCustomId("unidade_select")
-      .setPlaceholder("Escolha a unidade para ver a hierarquia:")
+      .setPlaceholder("Selecione uma divisão do DPD")
       .addOptions([
         { label: "FAST ⚡", value: "fast" },
-        { label: "MARY 🚁", value: "mary" },
+        { label: "MARY 🏍️", value: "mary" },
         { label: "S.W.A.T ☠️", value: "swat" },
         { label: "D.A.F 🛩️", value: "daf" },
-        { label: "DAF Shooter 🛩️", value: "daf_shooter" },
+        { label: "DAF Shooter 🎯", value: "daf_shooter" },
         { label: "C.O.T 🛡️", value: "cot" },
-        { label: "Internal Investigation ⚖️", value: "inv" },
+        { label: "I.N.V ⚖️", value: "inv" },
         { label: "Detective Unit 🔎", value: "detective" },
       ]);
 
@@ -33,7 +33,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor("#003366")
       .setTitle("📋 Hierarquia DPD")
-      .setDescription("Selecione abaixo a unidade para visualizar a hierarquia completa.")
+      .setDescription("Selecione abaixo a divisão que deseja consultar a hierarquia completa.")
       .setFooter({ text: "Departamento de Polícia de Detroit" })
       .setTimestamp();
 
@@ -45,167 +45,145 @@ module.exports = {
   },
 };
 
-// ======= FUNÇÃO DE GERAÇÃO =======
-module.exports.gerarHierarquiaEmbed = (unidade) => {
+// ======= GERA HIERARQUIA =======
+module.exports.gerarHierarquiaEmbed = async (guild, unidade) => {
+  const divisaoConfig = {
+    fast: {
+      titulo: "FAST ⚡",
+      cor: "#0055ff",
+      brasao: "https://link-do-brasao-fast.png",
+      cargos: [
+        "Supervisor FAST",
+        "Manager FAST",
+        "Sub-Manager FAST",
+        "Counselor FAST",
+        "Elite Pilot FAST",
+        "Veteran Pilot FAST",
+        "Official Pilot FAST",
+        "Probationary Pilot FAST",
+      ],
+    },
+    mary: {
+      titulo: "MARY 🏍️",
+      cor: "#0099ff",
+      brasao: "https://link-do-brasao-mary.png",
+      cargos: [
+        "Supervisor MARY",
+        "Manager MARY",
+        "Sub-Manager MARY",
+        "Counselor MARY",
+        "Elite Pilot MARY",
+        "Veteran Pilot MARY",
+        "Official Pilot MARY",
+        "Probationary Pilot MARY",
+      ],
+    },
+    swat: {
+      titulo: "S.W.A.T ☠️",
+      cor: "#000000",
+      brasao: "https://link-do-brasao-swat.png",
+      cargos: [
+        "Supervisor SWAT",
+        "Manager SWAT",
+        "Coordinator SWAT",
+        "Instructor SWAT",
+        "Operator SWAT",
+        "Probationary SWAT",
+      ],
+    },
+    daf: {
+      titulo: "D.A.F 🛩️",
+      cor: "#3366cc",
+      brasao: "https://link-do-brasao-daf.png",
+      cargos: [
+        "Supervisor DAF",
+        "Manager DAF",
+        "Crew Chief DAF",
+        "Captain DAF",
+        "Lead Pilot DAF",
+        "Senior Pilot DAF",
+        "Official Pilot DAF",
+        "Cadet Pilot DAF",
+      ],
+    },
+    daf_shooter: {
+      titulo: "DAF Shooter 🎯",
+      cor: "#1e90ff",
+      brasao: "https://link-do-brasao-daf-shooter.png",
+      cargos: [
+        "Shooter Captain DAF",
+        "Lead Shooter DAF",
+        "Senior Shooter DAF",
+        "Official Shooter DAF",
+        "Cadet Shooter DAF",
+      ],
+    },
+    cot: {
+      titulo: "C.O.T 🛡️",
+      cor: "#004080",
+      brasao: "https://link-do-brasao-cot.png",
+      cargos: [
+        "Director COT",
+        "Chief Officer COT",
+        "Supervisor COT",
+        "Agent COT",
+      ],
+    },
+    inv: {
+      titulo: "Internal Investigation ⚖️",
+      cor: "#800000",
+      brasao: "https://link-do-brasao-inv.png",
+      cargos: [
+        "Supervisor INV",
+        "Manager INV",
+        "Counselor INV",
+        "Senior INV",
+        "Official INV",
+        "Cadet INV",
+        "Probationary INV",
+      ],
+    },
+    detective: {
+      titulo: "Detective Unit 🔎",
+      cor: "#8b0000",
+      brasao: "https://link-do-brasao-detective.png",
+      cargos: [
+        "Supervisor Detective",
+        "Manager Detective",
+        "Detective-Lieutenant",
+        "Detective III",
+        "Detective II",
+        "Detective I",
+        "Probationary Detective",
+      ],
+    },
+  };
+
+  const config = divisaoConfig[unidade];
+  if (!config) return null;
+
   const embed = new EmbedBuilder()
-    .setColor("#0A1931")
-    .setTimestamp()
-    .setFooter({ text: "Departamento de Polícia de Detroit" });
+    .setColor(config.cor)
+    .setTitle(`📋 Hierarquia - ${config.titulo}`)
+    .setThumbnail(config.brasao)
+    .setFooter({ text: "Departamento de Polícia de Detroit" })
+    .setTimestamp();
 
-  switch (unidade) {
-    case "fast":
-      embed.setTitle("Hierarquia - FAST ⚡").setDescription(`
-**Supervisor Fast:**  
-@Supervisor Fast ⚡  
-**Manager FAST:**  
-@Manager FAST ⚡  
-**FAST Sub-Manager:**  
-@(FAST) Sub-Manager ⚡  
-**FAST Counselor:**  
-@(FAST) Counselor ⚡  
-**FAST Elite Pilot:**  
-@(FAST) Elite Pilot ⚡  
-**FAST Veteran Pilot:**  
-@(FAST) Veteran Pilot ⚡  
-**FAST Official Pilot:**  
-@(FAST) Official Pilot ⚡  
-**FAST Probationary Pilot:**  
-@(FAST) Probationary Pilot ⚡  
-**FAST Co-Pilot:**  
-@(FAST) Co-Pilot ⚡
-`);
-      break;
+  // Monta a lista de cargos e membros automaticamente
+  let descricao = "";
+  for (const cargoNome of config.cargos) {
+    const cargo = guild.roles.cache.find(
+      (r) => r.name.toLowerCase() === cargoNome.toLowerCase()
+    );
+    if (!cargo) {
+      descricao += `\n**${cargoNome}:**\n*(Cargo não encontrado no servidor)*\n`;
+      continue;
+    }
 
-    case "mary":
-      embed.setTitle("Hierarquia - MARY 🚁").setDescription(`
-**Supervisor MARY:**  
-@Supervisor MARY 🚁  
-**Manager MARY:**  
-@Manager MARY 🚁  
-**(MARY) Sub-Manager:**  
-@(MARY) Sub-Manager 🚁  
-**(MARY) Conselheiro:**  
-@(MARY) Conselheiro 🚁  
-**(MARY) Braço Direito:**  
-@(MARY) Braço Direito 🚁  
-**(MARY) Piloto Elite:**  
-@(MARY) Piloto Elite 🚁  
-**(MARY) Piloto Veterano:**  
-@(MARY) Piloto Veterano 🚁  
-**(MARY) Piloto Oficial:**  
-@(MARY) Piloto Oficial 🚁  
-**(MARY) Piloto Probatório:**  
-@(MARY) Piloto Probatório 🚁
-`);
-      break;
-
-    case "swat":
-      embed.setTitle("Hierarquia - S.W.A.T ☠️").setDescription(`
-**(S.W.A.T) Supervisor:**  
-@(S.W.A.T) Supervisor ☠️  
-**(S.W.A.T) Gestor:**  
-@(S.W.A.T) Gestor ☠️  
-**(S.W.A.T) Coordenador:**  
-@(S.W.A.T) Coordenador ☠️  
-**(S.W.A.T) Instrutor:**  
-@(S.W.A.T) Instrutor ☠️  
-**(S.W.A.T) Operador:**  
-@(S.W.A.T) Operador ☠️  
-**(S.W.A.T) Probatório:**  
-@(S.W.A.T) Probatório ☠️
-`);
-      break;
-
-    case "daf":
-      embed.setTitle("Hierarquia - D.A.F 🛩️").setDescription(`
-**Supervisor D.A.F:**  
-@Supervisor D.A.F 🛩️  
-**Manager D.A.F:**  
-@Manager D.A.F 🛩️  
-**(DAF) Crew Chief:**  
-@(DAF) Crew Chief 🛩️  
-**(DAF) Captain:**  
-@(DAF) Captain 🛩️  
-**(DAF) Lead Pilot:**  
-@(DAF) Lead Pilot 🛩️  
-**(DAF) Senior Pilot:**  
-@(DAF) Senior Pilot 🛩️  
-**(DAF) Officer Pilot:**  
-@(DAF) Officer Pilot 🛩️  
-**(DAF) Cadet Pilot:**  
-@(DAF) Cadet Pilot 🛩️
-`);
-      break;
-
-    case "daf_shooter":
-      embed.setTitle("Hierarquia - DAF Shooter 🛩️").setDescription(`
-**(DAF) Shooter Captain:**  
-@(DAF) Shooter Captain 🛩️  
-**(DAF) Lead Shooter:**  
-@(DAF) Lead Shooter 🛩️  
-**(DAF) Senior Shooter:**  
-@(DAF) Senior Shooter 🛩️  
-**(DAF) Officer Shooter:**  
-@(DAF) Officer Shooter 🛩️  
-**(DAF) Cadet Shooter:**  
-@(DAF) Cadet Shooter 🛩️
-`);
-      break;
-
-    case "cot":
-      embed.setTitle("Hierarquia - C.O.T 🛡️").setDescription(`
-**(COT) Director:**  
-@(COT) Director 🛡️  
-**(COT) Chief Officer:**  
-@(COT) Chief Officer 🛡️  
-**(COT) Supervisor:**  
-@(COT) Supervisor 🛡️  
-**(COT) Agent:**  
-@(COT) Agent 🛡️
-`);
-      break;
-
-    case "inv":
-      embed.setTitle("Hierarquia - Internal Investigation ⚖️").setDescription(`
-**Supervisor Internal Investigation:**  
-@Supervisor Internal Investigation ⚖️  
-**Manager Internal Investigation:**  
-@Manager Internal Investigation ⚖️  
-**(I.N.V) Counselor:**  
-@(I.N.V) Counselor ⚖️  
-**(I.N.V) Senior:**  
-@(I.N.V) Senior ⚖️  
-**(I.N.V) Official:**  
-@(I.N.V) Official ⚖️  
-**(I.N.V) Cadet:**  
-@(I.N.V) Cadet ⚖️  
-**(I.N.V) Probationary:**  
-@(I.N.V) Probationary ⚖️
-`);
-      break;
-
-    case "detective":
-      embed.setTitle("Hierarquia - Detective Unit 🔎").setDescription(`
-**Supervisor Detective Unit:**  
-@Supervisor Detective Unit 🔎  
-**Manager Detective Unit:**  
-@Manager Detective Unit 🔎  
-**(D.U.) Detective-Lieutenant:**  
-@(D.U.) Detective-Lieutenant 🔎  
-**(D.U.) Detective III:**  
-@(D.U.) Detective III 🔎  
-**(D.U.) Detective II:**  
-@(D.U.) Detective II 🔎  
-**(D.U.) Detective I:**  
-@(D.U.) Detective I 🔎  
-**(D.U.) Prob. Detective:**  
-@(D.U.) Prob. Detective 🔎
-`);
-      break;
-
-    default:
-      embed.setDescription("❌ Unidade não encontrada.");
+    const membros = cargo.members.map((m) => `<@${m.id}>`).join(", ");
+    descricao += `\n**${cargoNome}:**\n${membros || "*Vazio*"}\n`;
   }
 
+  embed.setDescription(descricao);
   return embed;
 };
