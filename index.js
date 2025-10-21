@@ -1,4 +1,4 @@
-// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores)
+// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores + Verificar Roles)
 
 const {
   Client,
@@ -33,6 +33,7 @@ const mensagem = require("./commands/mensagem.js");
 const denuncia = require("./commands/denuncia.js");
 const arquivar = require("./commands/arquivar.js");
 const intimar = require("./commands/intimar.js");
+const verificar_roles = require("./commands/verificar_roles.js"); // ✅ Novo comando adicionado
 
 client.commands.set(hierarquia.data.name, hierarquia);
 client.commands.set(anonimo.data.name, anonimo);
@@ -40,6 +41,7 @@ client.commands.set(mensagem.data.name, mensagem);
 client.commands.set(denuncia.data.name, denuncia);
 client.commands.set(arquivar.data.name, arquivar);
 client.commands.set(intimar.data.name, intimar);
+client.commands.set(verificar_roles.data.name, verificar_roles); // ✅ Registro do novo comando
 
 // ======= 3) REGISTRO DE COMANDOS (APENAS EM 2 SERVIDORES) =======
 client.once(Events.ClientReady, async (c) => {
@@ -53,9 +55,9 @@ client.once(Events.ClientReady, async (c) => {
     denuncia.data.toJSON(),
     arquivar.data.toJSON(),
     intimar.data.toJSON(),
+    verificar_roles.data.toJSON(), // ✅ Incluído no registro
   ];
 
-  // IDs dos servidores autorizados (definidos no Render → Environment)
   const servidores = [
     process.env.GUILD_ID_1, // Servidor principal (DPD)
     process.env.GUILD_ID_2, // Servidor de testes
@@ -193,7 +195,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // ======= 5) LOGIN + KEEP ALIVE =======
 client.login(process.env.BOT_TOKEN);
 
-// Mantém o Render ativo e faz log periódico
 setInterval(() => {
   console.log("✅ Bot ativo e conectado...");
 }, 120000); // 2 minutos
