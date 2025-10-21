@@ -52,7 +52,7 @@ client.once(Events.ClientReady, async (c) => {
     intimar.data.toJSON(),
   ];
 
-  // IDs dos servidores autorizados
+  // IDs dos servidores autorizados (definidos no Render → Environment)
   const servidores = [
     process.env.GUILD_ID_1, // Servidor principal (DPD)
     process.env.GUILD_ID_2, // Servidor de testes
