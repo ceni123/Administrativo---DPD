@@ -162,6 +162,19 @@ module.exports = {
     .setDescription("Exibe automaticamente a hierarquia de cada divisão do DPD com base nos cargos do servidor."),
 
   async execute(interaction) {
+    /* 🛡️ Verificação de permissão — APENAS Supervisores e Managers */
+    const temPermissao = interaction.member.roles.cache.some(r => {
+      const n = r.name.toLowerCase();
+      return n.includes("supervisor") || n.includes("manager");
+    });
+
+    if (!temPermissao) {
+      return interaction.reply({
+        content: "❌ Apenas **Supervisores** e **Managers** das divisões podem usar este comando.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     const menu = new StringSelectMenuBuilder()
       .setCustomId("unidade_select")
       .setPlaceholder("Selecione uma divisão do DPD")
