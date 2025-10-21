@@ -117,7 +117,7 @@ const DIVISOES = {
 
   detective: {
     titulo: "Detective Unit 🔎",
-    cor: "#8b0000",
+    cor: "#8d00ff",
     brasao: "",
     patentes: [
       { titulo: "Supervisor",           aliases: ["Supervisor Detective Unit 🔎", "Supervisor Detective Unit", "Detective Unit Supervisor"] },
