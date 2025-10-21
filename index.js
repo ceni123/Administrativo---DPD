@@ -17,7 +17,10 @@ const {
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMembers,           // Necessário para acessar todos os membros/cargos
+    GatewayIntentBits.GuildMessages,          // Para lidar com mensagens do servidor
+    GatewayIntentBits.GuildMessageReactions,  // Para manter cache de usuários ativos
+    GatewayIntentBits.MessageContent,         // Para leitura de conteúdo de mensagens
   ],
 });
 
@@ -190,6 +193,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // ======= 5) LOGIN + KEEP ALIVE =======
 client.login(process.env.BOT_TOKEN);
 
+// Mantém o Render ativo e faz log periódico
 setInterval(() => {
   console.log("✅ Bot ativo e conectado...");
-}, 60000);
+}, 120000); // 2 minutos
+
+// ======= 6) MONITORAMENTO DE ERROS =======
+process.on("unhandledRejection", (reason, p) => {
+  console.error("🚨 Promessa rejeitada:", p, "Motivo:", reason);
+});
