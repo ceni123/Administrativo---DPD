@@ -1,4 +1,4 @@
-// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores + Verificar Roles)
+// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores + Verificar Roles + Limpeza de Comandos Duplicados)
 
 const {
   Client,
@@ -17,10 +17,10 @@ const {
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,           // Necessário para acessar todos os membros/cargos
-    GatewayIntentBits.GuildMessages,          // Para lidar com mensagens do servidor
-    GatewayIntentBits.GuildMessageReactions,  // Para manter cache de usuários ativos
-    GatewayIntentBits.MessageContent,         // Para leitura de conteúdo de mensagens
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
@@ -33,7 +33,7 @@ const mensagem = require("./commands/mensagem.js");
 const denuncia = require("./commands/denuncia.js");
 const arquivar = require("./commands/arquivar.js");
 const intimar = require("./commands/intimar.js");
-const verificar_roles = require("./commands/verificar_roles.js"); // ✅ Novo comando adicionado
+const verificar_roles = require("./commands/verificar_roles.js");
 
 client.commands.set(hierarquia.data.name, hierarquia);
 client.commands.set(anonimo.data.name, anonimo);
@@ -41,13 +41,23 @@ client.commands.set(mensagem.data.name, mensagem);
 client.commands.set(denuncia.data.name, denuncia);
 client.commands.set(arquivar.data.name, arquivar);
 client.commands.set(intimar.data.name, intimar);
-client.commands.set(verificar_roles.data.name, verificar_roles); // ✅ Registro do novo comando
+client.commands.set(verificar_roles.data.name, verificar_roles);
 
-// ======= 3) REGISTRO DE COMANDOS (APENAS EM 2 SERVIDORES) =======
+// ======= 3) REGISTRO DE COMANDOS (E LIMPEZA GLOBAL) =======
 client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot conectado como ${c.user.tag}`);
 
   const rest = new REST({ version: "10" }).setToken(process.env.BOT_TOKEN);
+
+  // 🔥 Limpa comandos globais antigos (para remover duplicações)
+  try {
+    await rest.put(Routes.applicationCommands(process.env.APP_ID), { body: [] });
+    console.log("🧹 Comandos globais antigos removidos com sucesso!");
+  } catch (err) {
+    console.error("❌ Erro ao limpar comandos globais:", err);
+  }
+
+  // 💾 Registra comandos apenas nas guilds autorizadas
   const commandsJson = [
     hierarquia.data.toJSON(),
     anonimo.data.toJSON(),
@@ -55,7 +65,7 @@ client.once(Events.ClientReady, async (c) => {
     denuncia.data.toJSON(),
     arquivar.data.toJSON(),
     intimar.data.toJSON(),
-    verificar_roles.data.toJSON(), // ✅ Incluído no registro
+    verificar_roles.data.toJSON(),
   ];
 
   const servidores = [
@@ -71,7 +81,7 @@ client.once(Events.ClientReady, async (c) => {
       );
       console.log(`✅ Comandos registrados no servidor: ${guildId}`);
     }
-    console.log("⚙️ Comandos registrados nos servidores definidos com sucesso!");
+    console.log("⚙️ Comandos registrados com sucesso nas guilds definidas!");
   } catch (err) {
     console.error("❌ Erro ao registrar comandos nas guilds:", err);
   }
