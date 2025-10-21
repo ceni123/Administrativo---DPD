@@ -1,4 +1,4 @@
-// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log Global)
+// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores)
 
 const {
   Client,
@@ -29,16 +29,16 @@ const anonimo = require("./commands/anonimo.js");
 const mensagem = require("./commands/mensagem.js");
 const denuncia = require("./commands/denuncia.js");
 const arquivar = require("./commands/arquivar.js");
-const intimar = require("./commands/intimar.js"); // 🆕 Novo comando
+const intimar = require("./commands/intimar.js");
 
 client.commands.set(hierarquia.data.name, hierarquia);
 client.commands.set(anonimo.data.name, anonimo);
 client.commands.set(mensagem.data.name, mensagem);
 client.commands.set(denuncia.data.name, denuncia);
 client.commands.set(arquivar.data.name, arquivar);
-client.commands.set(intimar.data.name, intimar); // 🆕 Adicionado
+client.commands.set(intimar.data.name, intimar);
 
-// ======= 3) REGISTRO DE COMANDOS (GLOBAL) =======
+// ======= 3) REGISTRO DE COMANDOS (APENAS EM 2 SERVIDORES) =======
 client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot conectado como ${c.user.tag}`);
 
@@ -49,18 +49,26 @@ client.once(Events.ClientReady, async (c) => {
     mensagem.data.toJSON(),
     denuncia.data.toJSON(),
     arquivar.data.toJSON(),
-    intimar.data.toJSON(), // 🆕 Adicionado
+    intimar.data.toJSON(),
+  ];
+
+  // IDs dos servidores autorizados
+  const servidores = [
+    process.env.GUILD_ID_1, // Servidor principal (DPD)
+    process.env.GUILD_ID_2, // Servidor de testes
   ];
 
   try {
-    await rest.put(
-      Routes.applicationCommands(process.env.APP_ID),
-      { body: commandsJson }
-    );
-    console.log("🌍 Comandos registrados GLOBALMENTE com sucesso!");
-    console.log("⚠️ Pode levar até 1 hora para aparecer em todos os servidores.");
+    for (const guildId of servidores) {
+      await rest.put(
+        Routes.applicationGuildCommands(process.env.APP_ID, guildId),
+        { body: commandsJson }
+      );
+      console.log(`✅ Comandos registrados no servidor: ${guildId}`);
+    }
+    console.log("⚙️ Comandos registrados nos servidores definidos com sucesso!");
   } catch (err) {
-    console.error("❌ Erro ao registrar comandos globalmente:", err);
+    console.error("❌ Erro ao registrar comandos nas guilds:", err);
   }
 });
 
