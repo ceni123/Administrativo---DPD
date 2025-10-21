@@ -1,5 +1,4 @@
 // commands/hierarquia.js — Hierarquia automática por cargos (todas as divisões do DPD)
-// Lê os cargos reais do servidor, formata o embed e menciona automaticamente os membros.
 
 const {
   SlashCommandBuilder,
@@ -9,12 +8,7 @@ const {
   MessageFlags,
 } = require("discord.js");
 
-/* ========== AJUDA: como o bot encontra os cargos ==========
-  Para cada “patente”, definimos um array de possíveis nomes/variações
-  (com/sem acentos, emojis, pontos, etc.). O bot procura por qualquer
-  uma das variações (case-insensitive, usa includes para tolerar detalhes).
-*/
-
+/* ===== DIVISÕES (como você já tinha) ===== */
 const DIVISOES = {
   fast: {
     titulo: "FAST ⚡",
@@ -22,8 +16,8 @@ const DIVISOES = {
     brasao: "",
     patentes: [
       { titulo: "Supervisor Fast", aliases: ["Supervisor Fast ⚡", "Supervisor Fast"] },
-      { titulo: "Manager FAST", aliases: ["Manager FAST ⚡", "Manager FAST"] },
-      { titulo: "Sub-Manager", aliases: ["(FAST) Sub-Manager ⚡", "(FAST) Sub-Manager"] },
+      { titulo: "Manager FAST", aliases: ["Manager FAST ⚡", "Manager FAST", "(FAST) Manager ⚡", "(FAST) Manager", "Manager Fast"] },
+      { titulo: "Sub-Manager", aliases: ["(FAST) Sub-Manager ⚡", "(FAST) Sub-Manager", "Sub Manager FAST"] },
       { titulo: "Counselor", aliases: ["(FAST) Counselor ⚡", "(FAST) Counselor"] },
       { titulo: "Elite Pilot", aliases: ["(FAST) Elite Pilot ⚡", "(FAST) Elite Pilot"] },
       { titulo: "Veteran Pilot", aliases: ["(FAST) Veteran Pilot ⚡", "(FAST) Veteran Pilot"] },
@@ -40,7 +34,7 @@ const DIVISOES = {
     patentes: [
       { titulo: "Supervisor MARY", aliases: ["Supervisor MARY 🏍️", "Supervisor MARY"] },
       { titulo: "Manager MARY", aliases: ["Manager MARY 🏍️", "Manager MARY"] },
-      { titulo: "Sub-Manager", aliases: ["(MARY) Sub-Manager 🏍️", "(MARY) Sub-Manager"] },
+      { titulo: "Sub-Manager", aliases: ["(MARY) Sub-Manager 🏍️", "(MARY) Sub-Manager", "Sub Manager MARY"] },
       { titulo: "Conselheiro", aliases: ["(MARY) Conselheiro 🏍️", "(MARY) Conselheiro"] },
       { titulo: "Braço Direito", aliases: ["(MARY) Braço Direito 🏍️", "(MARY) Braço Direito"] },
       { titulo: "Piloto Elite", aliases: ["(MARY) Piloto Elite 🏍️", "(MARY) Piloto Elite"] },
@@ -55,12 +49,12 @@ const DIVISOES = {
     cor: "#111111",
     brasao: "",
     patentes: [
-      { titulo: "Supervisor", aliases: ["(S.W.A.T) Supervisor ☠️", "(S.W.A.T) Supervisor"] },
-      { titulo: "Gestor", aliases: ["(S.W.A.T) Gestor ☠️", "(S.W.A.T) Gestor"] },
-      { titulo: "Coordenador", aliases: ["(S.W.A.T) Coordenador ☠️", "(S.W.A.T) Coordenador"] },
-      { titulo: "Instrutor", aliases: ["(S.W.A.T) Instrutor ☠️", "(S.W.A.T) Instrutor"] },
-      { titulo: "Operador", aliases: ["(S.W.A.T) Operador ☠️", "(S.W.A.T) Operador"] },
-      { titulo: "Probatório", aliases: ["(S.W.A.T) Probatório ☠️", "(S.W.A.T) Probatório"] },
+      { titulo: "Supervisor",  aliases: ["(S.W.A.T) Supervisor ☠️", "(S.W.A.T) Supervisor", "SWAT Supervisor"] },
+      { titulo: "Gestor",      aliases: ["(S.W.A.T) Gestor ☠️", "(S.W.A.T) Gestor", "SWAT Gestor"] },
+      { titulo: "Coordenador", aliases: ["(S.W.A.T) Coordenador ☠️", "(S.W.A.T) Coordenador", "SWAT Coordenador"] },
+      { titulo: "Instrutor",   aliases: ["(S.W.A.T) Instrutor ☠️", "(S.W.A.T) Instrutor", "SWAT Instrutor"] },
+      { titulo: "Operador",    aliases: ["(S.W.A.T) Operador ☠️", "(S.W.A.T) Operador", "SWAT Operador"] },
+      { titulo: "Probatório",  aliases: ["(S.W.A.T) Probatório ☠️", "(S.W.A.T) Probatório", "SWAT Probatório"] },
     ],
   },
 
@@ -70,13 +64,13 @@ const DIVISOES = {
     brasao: "",
     patentes: [
       { titulo: "Supervisor D.A.F.", aliases: ["Supervisor D.A.F. 🛩️", "Supervisor D.A.F.", "Supervisor DAF"] },
-      { titulo: "Manager D.A.F.", aliases: ["Manager D.A.F. 🛩️", "Manager D.A.F.", "Manager DAF"] },
-      { titulo: "Crew Chief", aliases: ["(DAF) Crew Chief 🛩️", "(DAF) Crew Chief"] },
-      { titulo: "Captain", aliases: ["(DAF) Captain 🛩️", "(DAF) Captain"] },
-      { titulo: "Lead Pilot", aliases: ["(DAF) Lead Pilot 🛩️", "(DAF) Lead Pilot"] },
-      { titulo: "Senior Pilot", aliases: ["(DAF) Senior Pilot 🛩️", "(DAF) Senior Pilot"] },
-      { titulo: "Officer Pilot", aliases: ["(DAF) Officer Pilot 🛩️", "(DAF) Officer Pilot"] },
-      { titulo: "Cadet Pilot", aliases: ["(DAF) Cadet Pilot 🛩️", "(DAF) Cadet Pilot"] },
+      { titulo: "Manager D.A.F.",    aliases: ["Manager D.A.F. 🛩️", "Manager D.A.F.", "Manager DAF"] },
+      { titulo: "Crew Chief",        aliases: ["(DAF) Crew Chief 🛩️", "(DAF) Crew Chief", "DAF Crew Chief"] },
+      { titulo: "Captain",           aliases: ["(DAF) Captain 🛩️", "(DAF) Captain", "DAF Captain"] },
+      { titulo: "Lead Pilot",        aliases: ["(DAF) Lead Pilot 🛩️", "(DAF) Lead Pilot", "DAF Lead Pilot"] },
+      { titulo: "Senior Pilot",      aliases: ["(DAF) Senior Pilot 🛩️", "(DAF) Senior Pilot", "DAF Senior Pilot"] },
+      { titulo: "Officer Pilot",     aliases: ["(DAF) Officer Pilot 🛩️", "(DAF) Officer Pilot", "DAF Officer Pilot"] },
+      { titulo: "Cadet Pilot",       aliases: ["(DAF) Cadet Pilot 🛩️", "(DAF) Cadet Pilot", "DAF Cadet Pilot"] },
     ],
   },
 
@@ -85,11 +79,11 @@ const DIVISOES = {
     cor: "#1e90ff",
     brasao: "",
     patentes: [
-      { titulo: "Shooter Captain", aliases: ["(DAF) Shooter Captain 🛩️", "(DAF) Shooter Captain"] },
-      { titulo: "Lead Shooter", aliases: ["(DAF) Lead Shooter 🛩️", "(DAF) Lead Shooter"] },
-      { titulo: "Senior Shooter", aliases: ["(DAF) Senior Shooter 🛩️", "(DAF) Senior Shooter"] },
-      { titulo: "Officer Shooter", aliases: ["(DAF) Officer Shooter 🛩️", "(DAF) Officer Shooter"] },
-      { titulo: "Cadet Shooter", aliases: ["(DAF) Cadet Shooter 🛩️", "(DAF) Cadet Shooter"] },
+      { titulo: "Shooter Captain",  aliases: ["(DAF) Shooter Captain 🛩️", "(DAF) Shooter Captain", "DAF Shooter Captain"] },
+      { titulo: "Lead Shooter",     aliases: ["(DAF) Lead Shooter 🛩️", "(DAF) Lead Shooter", "DAF Lead Shooter"] },
+      { titulo: "Senior Shooter",   aliases: ["(DAF) Senior Shooter 🛩️", "(DAF) Senior Shooter", "DAF Senior Shooter"] },
+      { titulo: "Officer Shooter",  aliases: ["(DAF) Officer Shooter 🛩️", "(DAF) Officer Shooter", "DAF Officer Shooter"] },
+      { titulo: "Cadet Shooter",    aliases: ["(DAF) Cadet Shooter 🛩️", "(DAF) Cadet Shooter", "DAF Cadet Shooter"] },
     ],
   },
 
@@ -98,10 +92,10 @@ const DIVISOES = {
     cor: "#074e8c",
     brasao: "",
     patentes: [
-      { titulo: "Director", aliases: ["(COT) Director 🛡️", "(COT) Director"] },
-      { titulo: "Chief Officer", aliases: ["(COT) Chief Officer 🛡️", "(COT) Chief Officer"] },
-      { titulo: "Supervisor", aliases: ["(COT) Supervisor 🛡️", "(COT) Supervisor"] },
-      { titulo: "Agent", aliases: ["(COT) Agent 🛡️", "(COT) Agent"] },
+      { titulo: "Director",     aliases: ["(COT) Director 🛡️", "(COT) Director", "COT Director"] },
+      { titulo: "Chief Officer",aliases: ["(COT) Chief Officer 🛡️", "(COT) Chief Officer", "COT Chief Officer"] },
+      { titulo: "Supervisor",   aliases: ["(COT) Supervisor 🛡️", "(COT) Supervisor", "COT Supervisor"] },
+      { titulo: "Agent",        aliases: ["(COT) Agent 🛡️", "(COT) Agent", "COT Agent"] },
     ],
   },
 
@@ -110,13 +104,13 @@ const DIVISOES = {
     cor: "#8a1b1b",
     brasao: "",
     patentes: [
-      { titulo: "Supervisor", aliases: ["Supervisor Internal investigation", "Supervisor Internal investigation ⚖️"] },
-      { titulo: "Manager", aliases: ["Manager Internal investigation", "Manager Internal investigation ⚖️"] },
-      { titulo: "Counselor", aliases: ["(I.N.V) Counselor ⚖️", "(I.N.V) Counselor"] },
-      { titulo: "Senior", aliases: ["(I.N.V) Senior ⚖️", "(I.N.V) Senior"] },
-      { titulo: "Official", aliases: ["(I.N.V) Official ⚖️", "(I.N.V) Official"] },
-      { titulo: "Cadet", aliases: ["(I.N.V) Cadet ⚖️", "(I.N.V) Cadet"] },
-      { titulo: "Probationary", aliases: ["(I.N.V) Probationary ⚖️", "(I.N.V) Probationary"] },
+      { titulo: "Supervisor",   aliases: ["Supervisor Internal investigation ⚖️", "Supervisor Internal investigation", "Internal Investigation Supervisor"] },
+      { titulo: "Manager",      aliases: ["Manager Internal investigation ⚖️", "Manager Internal investigation", "Internal Investigation Manager"] },
+      { titulo: "Counselor",    aliases: ["(I.N.V) Counselor ⚖️", "(I.N.V) Counselor", "INV Counselor"] },
+      { titulo: "Senior",       aliases: ["(I.N.V) Senior ⚖️", "(I.N.V) Senior", "INV Senior"] },
+      { titulo: "Official",     aliases: ["(I.N.V) Official ⚖️", "(I.N.V) Official", "INV Official"] },
+      { titulo: "Cadet",        aliases: ["(I.N.V) Cadet ⚖️", "(I.N.V) Cadet", "INV Cadet"] },
+      { titulo: "Probationary", aliases: ["(I.N.V) Probationary ⚖️", "(I.N.V) Probationary", "INV Probationary"] },
     ],
   },
 
@@ -125,43 +119,80 @@ const DIVISOES = {
     cor: "#8b0000",
     brasao: "",
     patentes: [
-      { titulo: "Supervisor", aliases: ["Supervisor Detective Unit", "Supervisor Detective Unit 🔎"] },
-      { titulo: "Manager", aliases: ["Manager Detective Unit", "Manager Detective Unit 🔎"] },
-      { titulo: "Detective-Lieutenant", aliases: ["(D.U.) Detective-Lieutenant 🔎", "(D.U.) Detective-Lieutenant"] },
-      { titulo: "Detective III", aliases: ["(D.U.) Detective III 🔎", "(D.U.) Detective III"] },
-      { titulo: "Detective II", aliases: ["(D.U.) Detective II 🔎", "(D.U.) Detective II"] },
-      { titulo: "Detective I", aliases: ["(D.U.) Detective I 🔎", "(D.U.) Detective I"] },
-      { titulo: "Prob. Detective", aliases: ["(D.U.) Prob. Detective 🔎", "(D.U.) Prob. Detective"] },
+      { titulo: "Supervisor",            aliases: ["Supervisor Detective Unit 🔎", "Supervisor Detective Unit", "Detective Unit Supervisor"] },
+      { titulo: "Manager",               aliases: ["Manager Detective Unit 🔎", "Manager Detective Unit", "Detective Unit Manager"] },
+      { titulo: "Detective-Lieutenant",  aliases: ["(D.U.) Detective-Lieutenant 🔎", "(D.U.) Detective-Lieutenant", "Detective Lieutenant"] },
+      { titulo: "Detective III",         aliases: ["(D.U.) Detective III 🔎", "(D.U.) Detective III", "Detective III"] },
+      { titulo: "Detective II",          aliases: ["(D.U.) Detective II 🔎", "(D.U.) Detective II", "Detective II"] },
+      { titulo: "Detective I",           aliases: ["(D.U.) Detective I 🔎", "(D.U.) Detective I", "Detective I"] },
+      { titulo: "Prob. Detective",       aliases: ["(D.U.) Prob. Detective 🔎", "(D.U.) Prob. Detective", "Probationary Detective"] },
     ],
   },
 };
 
-/* 🔍 Busca role por qualquer variação (case-insensitive, ignora acentos e emojis) */
-function findRole(guild, aliases) {
-  const normalize = str =>
-    str
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^\w\s]/g, "")
-      .trim();
+/* ===== Tokens de divisão para fallback (pega variações como d.a.f / i.n.v / s.w.a.t) ===== */
+const DIV_TOKENS = {
+  fast: ["fast"],
+  mary: ["mary"],
+  swat: ["swat", "s w a t", "s.w.a.t"],
+  daf: ["daf", "d a f", "d.a.f"],
+  daf_shooter: ["daf", "d a f", "d.a.f", "shooter"],
+  cot: ["cot", "c o t", "c.o.t"],
+  inv: ["inv", "i n v", "i.n.v", "internal investigation", "investigation"],
+  detective: ["detective", "d u", "d.u.", "d u.", "d.u"],
+};
 
-  const target = aliases.map(a => normalize(a));
+/* ===== Normalização agressiva ===== */
+const normalize = (str) =>
+  str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")     // acentos
+    .replace(/[^\w\s]/g, "")             // emojis/símbolos
+    .replace(/\s+/g, " ")                // espaços múltiplos
+    .trim();
 
-  return (
-    guild.roles.cache.find(role => {
-      const name = normalize(role.name);
-      return target.some(t => name.includes(t));
-    }) || null
-  );
+/* Divide um título em tokens de cargo (sem a divisão) */
+function cargoTokensFromTitulo(titulo, unidade) {
+  const t = normalize(titulo);
+  // remove o nome da divisão do título, se existir nele
+  const removedDiv = DIV_TOKENS[unidade].reduce((acc, tok) => acc.replace(normalize(tok), ""), t);
+  return removedDiv.split(" ").filter(Boolean); // tokens do cargo
 }
 
-/* Monta a listagem “**Patente:** @membro, @membro / Vazio ” */
-function buildDescricao(guild, config) {
+/* Verifica se 'name' contém todos os tokens */
+const containsAll = (name, tokens) => tokens.every((tk) => name.includes(tk));
+
+/* Busca role: 1) por aliases 2) por fallback (tokens de divisão + tokens do cargo) */
+function findRoleEnhanced(guild, aliases, unidade, tituloPatente) {
+  // 1) tentativa direta por aliases
+  const target = aliases.map((a) => normalize(a));
+  let found =
+    guild.roles.cache.find((role) => {
+      const name = normalize(role.name);
+      return target.some((t) => name.includes(t));
+    }) || null;
+  if (found) return found;
+
+  // 2) fallback por tokens
+  const nameHasDiv = (name) => DIV_TOKENS[unidade].some((dv) => name.includes(normalize(dv)));
+  const cargoTokens = cargoTokensFromTitulo(tituloPatente, unidade); // ex.: ["manager"], ["elite","pilot"]
+
+  found =
+    guild.roles.cache.find((role) => {
+      const name = normalize(role.name);
+      return nameHasDiv(name) && containsAll(name, cargoTokens);
+    }) || null;
+
+  return found;
+}
+
+/* Monta a descrição com um membro por linha */
+function buildDescricao(guild, unidade, config) {
   let out = "";
   for (const pat of config.patentes) {
-    const role = findRole(guild, pat.aliases);
-    const membros = role ? role.members.map(m => `<@${m.id}>`).join(", ") : "";
+    const role = findRoleEnhanced(guild, pat.aliases, unidade, pat.titulo);
+    const membros = role ? role.members.map((m) => `<@${m.id}>`).join("\n") : "";
     out += `\n**${pat.titulo}:**\n${membros || "*Vazio*"}\n`;
   }
   return out;
@@ -173,8 +204,8 @@ module.exports = {
     .setDescription("Exibe automaticamente a hierarquia de cada divisão do DPD com base nos cargos do servidor."),
 
   async execute(interaction) {
-    /* 🛡️ Verificação de permissão — APENAS Supervisores e Managers */
-    const temPermissao = interaction.member.roles.cache.some(r => {
+    // Apenas Supervisores e Managers executam
+    const temPermissao = interaction.member.roles.cache.some((r) => {
       const n = r.name.toLowerCase();
       return n.includes("supervisor") || n.includes("manager");
     });
@@ -191,7 +222,7 @@ module.exports = {
       .setPlaceholder("Selecione uma divisão do DPD")
       .addOptions([
         { label: "FAST ⚡", value: "fast" },
-        { label: "MARY 🚁", value: "mary" },
+        { label: "MARY 🏍️", value: "mary" },
         { label: "S.W.A.T ☠️", value: "swat" },
         { label: "D.A.F 🛩️", value: "daf" },
         { label: "DAF Shooter 🎯", value: "daf_shooter" },
@@ -217,9 +248,9 @@ module.exports = {
   },
 };
 
-/* Usado pelo index.js quando a pessoa escolhe a divisão no select */
+/* Chamado pelo index.js quando a pessoa escolhe a divisão */
 module.exports.gerarHierarquiaEmbed = async (guild, unidade) => {
-  // 🔥 Carrega todos os membros para o cache antes de montar o embed
+  // Garante cache de membros
   await guild.members.fetch();
 
   const config = DIVISOES[unidade];
@@ -233,7 +264,8 @@ module.exports.gerarHierarquiaEmbed = async (guild, unidade) => {
 
   if (config.brasao) embed.setThumbnail(config.brasao);
 
-  const descricao = buildDescricao(guild, config);
+  const descricao = buildDescricao(guild, unidade, config);
   embed.setDescription(descricao);
+
   return embed;
 };
