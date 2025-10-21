@@ -219,6 +219,9 @@ module.exports = {
 
 /* Usado pelo index.js quando a pessoa escolhe a divisão no select */
 module.exports.gerarHierarquiaEmbed = async (guild, unidade) => {
+  // 🔥 Carrega todos os membros para o cache antes de montar o embed
+  await guild.members.fetch();
+
   const config = DIVISOES[unidade];
   if (!config) return null;
 
