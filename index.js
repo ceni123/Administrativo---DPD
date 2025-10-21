@@ -1,4 +1,4 @@
-// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar - Registro Global)
+// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Log Global)
 
 const {
   Client,
@@ -50,7 +50,6 @@ client.once(Events.ClientReady, async (c) => {
   ];
 
   try {
-    // Registro GLOBAL (comandos válidos em todos os servidores)
     await rest.put(
       Routes.applicationCommands(process.env.APP_ID),
       { body: commandsJson }
@@ -71,8 +70,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     try {
       await command.execute(interaction);
+
+      // ===== LOG AUTOMÁTICO =====
+      const logChannel = interaction.guild.channels.cache.find(
+        (c) =>
+          c.name.toLowerCase().includes("log-botdpd") &&
+          c.type === ChannelType.GuildText
+      );
+
+      if (logChannel) {
+        const logEmbed = new EmbedBuilder()
+          .setColor("#EFB84A")
+          .setTitle("📜 Registro de Comando")
+          .setDescription(
+            `**Usuário:** ${interaction.user} | ${interaction.user.tag}\n` +
+            `**Comando:** \`/${interaction.commandName}\`\n` +
+            `**Ação:** ✅ Comando executado com sucesso.\n` +
+            `**Canal:** ${interaction.channel}`
+          )
+          .setFooter({ text: "Departamento de Polícia de Detroit" })
+          .setTimestamp();
+
+        await logChannel.send({ embeds: [logEmbed] });
+      } else {
+        console.warn("⚠️ Canal de log '⭐│log-botdpd' não encontrado.");
+      }
     } catch (err) {
-      console.error(err);
+      console.error("❌ Erro ao executar comando:", err);
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({
           content: "❌ Erro ao executar o comando.",
