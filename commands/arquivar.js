@@ -9,6 +9,19 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   async execute(interaction) {
+    // 🛡️ Verificação de permissão
+    const cargosPermitidos = ["Council 💠", "Internal Investigation ⚖️"];
+    const temPermissao = interaction.member.roles.cache.some(r =>
+      cargosPermitidos.includes(r.name)
+    );
+
+    if (!temPermissao) {
+      return interaction.reply({
+        content: "❌ Você não tem permissão para usar este comando. Apenas membros do **Council 💠** ou da **Internal Investigation ⚖️** podem utilizar.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     try {
       const canalAtual = interaction.channel;
       const guild = interaction.guild;
@@ -17,7 +30,7 @@ module.exports = {
       const categoriaArquivada = guild.channels.cache.find(
         (c) =>
           c.name.toLowerCase().includes("ticket´s i.n.v arquivado") &&
-          c.type === 4 // 4 = Categoria
+          c.type === 4 // Categoria
       );
 
       if (!categoriaArquivada) {
