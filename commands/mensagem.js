@@ -12,10 +12,14 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    // 🛡️ Verificação de permissão
-    const cargosPermitidos = ["Council 💠", "Internal Investigation ⚖️"];
+    // 🛡️ Verificação de permissão via ID de cargo
+    const cargosPermitidosIDs = [
+      "1222682312035143710", // Council 💠
+      "1238253951535681536"  // Internal Investigation ⚖️
+    ];
+
     const temPermissao = interaction.member.roles.cache.some(r =>
-      cargosPermitidos.includes(r.name)
+      cargosPermitidosIDs.includes(r.id)
     );
 
     if (!temPermissao) {
