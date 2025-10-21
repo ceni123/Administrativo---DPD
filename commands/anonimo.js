@@ -1,5 +1,4 @@
 // commands/anonimo.js — envia UMA mensagem anônima para o destinatário
-
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
@@ -18,6 +17,20 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    // 🛡️ Verificação de permissão
+    const cargosPermitidos = ["Council 💠", "Internal Investigation ⚖️"];
+    const temPermissao = interaction.member.roles.cache.some(r =>
+      cargosPermitidos.includes(r.name)
+    );
+
+    if (!temPermissao) {
+      return interaction.reply({
+        content: "❌ Você não tem permissão para usar este comando. Apenas membros do **Council 💠** ou da **Internal Investigation ⚖️** podem utilizar.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    // 🔹 Se passou na verificação, continua normalmente
     const destino = interaction.options.getUser('para', true);
     const texto = interaction.options.getString('mensagem', true);
 
@@ -29,10 +42,8 @@ module.exports = {
       .setTimestamp();
 
     try {
-      // 👉 Envia UMA ÚNICA mensagem ao destinatário
       await destino.send({ embeds: [embed] });
 
-      // Confirmação só para quem executou o comando
       await interaction.reply({
         content: `✅ Mensagem anônima enviada para **${destino.tag}**.`,
         flags: MessageFlags.Ephemeral,
