@@ -5,6 +5,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  MessageFlags,
 } = require('discord.js');
 
 module.exports = {
@@ -13,6 +14,20 @@ module.exports = {
     .setDescription('Exibe o painel de denúncias da corregedoria.'),
 
   async execute(interaction) {
+    // 🛡️ Verificação de permissão para usar o comando
+    const cargosPermitidos = ["Council 💠", "Internal Investigation ⚖️"];
+    const temPermissao = interaction.member.roles.cache.some(r =>
+      cargosPermitidos.includes(r.name)
+    );
+
+    if (!temPermissao) {
+      return interaction.reply({
+        content: "❌ Você não tem permissão para usar este comando. Apenas membros do **Council 💠** ou da **Internal Investigation ⚖️** podem utilizar.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    // 🔹 Criação do painel
     const embed = new EmbedBuilder()
       .setColor('#D32F2F')
       .setTitle('Central do Internal Investigation')
