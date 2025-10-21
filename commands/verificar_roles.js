@@ -8,6 +8,23 @@ module.exports = {
     .setDescription("Verifica se o bot consegue ler os cargos e quantos membros existem em cada um (debug interno)."),
 
   async execute(interaction) {
+    // 🛡️ Verificação de permissão via ID de cargo
+    const cargosPermitidosIDs = [
+      "1222682312035143710", // Council 💠
+      "1238253951535681536"  // Internal Investigation ⚖️
+    ];
+
+    const temPermissao = interaction.member.roles.cache.some(r =>
+      cargosPermitidosIDs.includes(r.id)
+    );
+
+    if (!temPermissao) {
+      return interaction.reply({
+        content: "❌ Você não tem permissão para usar este comando. Apenas membros do **Council 💠** ou da **Internal Investigation ⚖️** podem utilizar.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     try {
       const guild = interaction.guild;
 
