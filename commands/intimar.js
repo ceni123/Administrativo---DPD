@@ -1,5 +1,5 @@
-// commands/intimar.js
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } = require("discord.js");
+// commands/intimar.js — Cria canal privado de intimação oficial
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, MessageFlags } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -13,6 +13,19 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    // 🛡️ Verificação de permissão
+    const cargosPermitidos = ["Council 💠", "Internal Investigation ⚖️"];
+    const temPermissao = interaction.member.roles.cache.some(r =>
+      cargosPermitidos.includes(r.name)
+    );
+
+    if (!temPermissao) {
+      return interaction.reply({
+        content: "❌ Você não tem permissão para usar este comando. Apenas membros do **Council 💠** ou da **Internal Investigation ⚖️** podem utilizar.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     const usuario = interaction.options.getUser("usuario");
 
     // 🔍 Busca a categoria de INTIMAÇÕES
@@ -25,7 +38,7 @@ module.exports = {
     if (!categoria) {
       await interaction.reply({
         content: '❌ Categoria **"INTIMAÇÕES I.N.V"** não encontrada no servidor.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -38,12 +51,12 @@ module.exports = {
     if (!invRole) {
       await interaction.reply({
         content: '❌ Cargo **"Internal Investigation ⚖️"** não encontrado no servidor.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
-    // Gera nome único pro canal
+    // 🔹 Gera nome único pro canal
     const nomeCanal = `intimacao-${usuario.username}`;
 
     // 🏗️ Cria o canal privado
@@ -87,10 +100,10 @@ module.exports = {
 
     await canal.send({ embeds: [embed] });
 
-    // ✅ Confirmação para quem executou o comando
+    // ✅ Confirmação privada
     await interaction.reply({
       content: `✅ Canal de intimação criado com sucesso: ${canal}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   },
 };
