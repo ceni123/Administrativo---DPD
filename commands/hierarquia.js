@@ -19,7 +19,7 @@ const DIVISOES = {
   fast: {
     titulo: "FAST ⚡",
     cor: "#0b6ef3",
-    brasao: "", // opcional: URL do brasão
+    brasao: "",
     patentes: [
       { titulo: "Supervisor Fast", aliases: ["Supervisor Fast ⚡", "Supervisor Fast"] },
       { titulo: "Manager FAST", aliases: ["Manager FAST ⚡", "Manager FAST"] },
@@ -41,7 +41,7 @@ const DIVISOES = {
       { titulo: "Supervisor MARY", aliases: ["Supervisor MARY 🏍️", "Supervisor MARY"] },
       { titulo: "Manager MARY", aliases: ["Manager MARY 🏍️", "Manager MARY"] },
       { titulo: "Sub-Manager", aliases: ["(MARY) Sub-Manager 🏍️", "(MARY) Sub-Manager"] },
-      { titulo: "Conselheiro", aliases: ["(MARY) Conselheiro 🏍️", "(MARY) Conselheiro", "(MARY) Conselheiro"] },
+      { titulo: "Conselheiro", aliases: ["(MARY) Conselheiro 🏍️", "(MARY) Conselheiro"] },
       { titulo: "Braço Direito", aliases: ["(MARY) Braço Direito 🏍️", "(MARY) Braço Direito"] },
       { titulo: "Piloto Elite", aliases: ["(MARY) Piloto Elite 🏍️", "(MARY) Piloto Elite"] },
       { titulo: "Piloto Veterano", aliases: ["(MARY) Piloto Veterano 🏍️", "(MARY) Piloto Veterano"] },
@@ -55,12 +55,12 @@ const DIVISOES = {
     cor: "#111111",
     brasao: "",
     patentes: [
-      { titulo: "Supervisor",  aliases: ["(S.W.A.T) Supervisor ☠️", "(S.W.A.T) Supervisor"] },
-      { titulo: "Gestor",      aliases: ["(S.W.A.T) Gestor ☠️", "(S.W.A.T) Gestor"] },
+      { titulo: "Supervisor", aliases: ["(S.W.A.T) Supervisor ☠️", "(S.W.A.T) Supervisor"] },
+      { titulo: "Gestor", aliases: ["(S.W.A.T) Gestor ☠️", "(S.W.A.T) Gestor"] },
       { titulo: "Coordenador", aliases: ["(S.W.A.T) Coordenador ☠️", "(S.W.A.T) Coordenador"] },
-      { titulo: "Instrutor",   aliases: ["(S.W.A.T) Instrutor ☠️", "(S.W.A.T) Instrutor"] },
-      { titulo: "Operador",    aliases: ["(S.W.A.T) Operador ☠️", "(S.W.A.T) Operador"] },
-      { titulo: "Probatório",  aliases: ["(S.W.A.T) Probatório ☠️", "(S.W.A.T) Probatório"] },
+      { titulo: "Instrutor", aliases: ["(S.W.A.T) Instrutor ☠️", "(S.W.A.T) Instrutor"] },
+      { titulo: "Operador", aliases: ["(S.W.A.T) Operador ☠️", "(S.W.A.T) Operador"] },
+      { titulo: "Probatório", aliases: ["(S.W.A.T) Probatório ☠️", "(S.W.A.T) Probatório"] },
     ],
   },
 
@@ -70,13 +70,13 @@ const DIVISOES = {
     brasao: "",
     patentes: [
       { titulo: "Supervisor D.A.F.", aliases: ["Supervisor D.A.F. 🛩️", "Supervisor D.A.F.", "Supervisor DAF"] },
-      { titulo: "Manager D.A.F.",    aliases: ["Manager D.A.F. 🛩️", "Manager D.A.F.", "Manager DAF"] },
-      { titulo: "Crew Chief",        aliases: ["(DAF) Crew Chief 🛩️", "(DAF) Crew Chief"] },
-      { titulo: "Captain",           aliases: ["(DAF) Captain 🛩️", "(DAF) Captain"] },
-      { titulo: "Lead Pilot",        aliases: ["(DAF) Lead Pilot 🛩️", "(DAF) Lead Pilot"] },
-      { titulo: "Senior Pilot",      aliases: ["(DAF) Senior Pilot 🛩️", "(DAF) Senior Pilot"] },
-      { titulo: "Officer Pilot",     aliases: ["(DAF) Officer Pilot 🛩️", "(DAF) Officer Pilot"] },
-      { titulo: "Cadet Pilot",       aliases: ["(DAF) Cadet Pilot 🛩️", "(DAF) Cadet Pilot"] },
+      { titulo: "Manager D.A.F.", aliases: ["Manager D.A.F. 🛩️", "Manager D.A.F.", "Manager DAF"] },
+      { titulo: "Crew Chief", aliases: ["(DAF) Crew Chief 🛩️", "(DAF) Crew Chief"] },
+      { titulo: "Captain", aliases: ["(DAF) Captain 🛩️", "(DAF) Captain"] },
+      { titulo: "Lead Pilot", aliases: ["(DAF) Lead Pilot 🛩️", "(DAF) Lead Pilot"] },
+      { titulo: "Senior Pilot", aliases: ["(DAF) Senior Pilot 🛩️", "(DAF) Senior Pilot"] },
+      { titulo: "Officer Pilot", aliases: ["(DAF) Officer Pilot 🛩️", "(DAF) Officer Pilot"] },
+      { titulo: "Cadet Pilot", aliases: ["(DAF) Cadet Pilot 🛩️", "(DAF) Cadet Pilot"] },
     ],
   },
 
@@ -85,11 +85,11 @@ const DIVISOES = {
     cor: "#1e90ff",
     brasao: "",
     patentes: [
-      { titulo: "Shooter Captain",  aliases: ["(DAF) Shooter Captain 🛩️", "(DAF) Shooter Captain"] },
-      { titulo: "Lead Shooter",     aliases: ["(DAF) Lead Shooter 🛩️", "(DAF) Lead Shooter"] },
-      { titulo: "Senior Shooter",   aliases: ["(DAF) Senior Shooter 🛩️", "(DAF) Senior Shooter"] },
-      { titulo: "Officer Shooter",  aliases: ["(DAF) Officer Shooter 🛩️", "(DAF) Officer Shooter"] },
-      { titulo: "Cadet Shooter",    aliases: ["(DAF) Cadet Shooter 🛩️", "(DAF) Cadet Shooter"] },
+      { titulo: "Shooter Captain", aliases: ["(DAF) Shooter Captain 🛩️", "(DAF) Shooter Captain"] },
+      { titulo: "Lead Shooter", aliases: ["(DAF) Lead Shooter 🛩️", "(DAF) Lead Shooter"] },
+      { titulo: "Senior Shooter", aliases: ["(DAF) Senior Shooter 🛩️", "(DAF) Senior Shooter"] },
+      { titulo: "Officer Shooter", aliases: ["(DAF) Officer Shooter 🛩️", "(DAF) Officer Shooter"] },
+      { titulo: "Cadet Shooter", aliases: ["(DAF) Cadet Shooter 🛩️", "(DAF) Cadet Shooter"] },
     ],
   },
 
@@ -98,10 +98,10 @@ const DIVISOES = {
     cor: "#074e8c",
     brasao: "",
     patentes: [
-      { titulo: "Director",     aliases: ["(COT) Director 🛡️", "(COT) Director"] },
-      { titulo: "Chief Officer",aliases: ["(COT) Chief Officer 🛡️", "(COT) Chief Officer"] },
-      { titulo: "Supervisor",   aliases: ["(COT) Supervisor 🛡️", "(COT) Supervisor"] },
-      { titulo: "Agent",        aliases: ["(COT) Agent 🛡️", "(COT) Agent"] },
+      { titulo: "Director", aliases: ["(COT) Director 🛡️", "(COT) Director"] },
+      { titulo: "Chief Officer", aliases: ["(COT) Chief Officer 🛡️", "(COT) Chief Officer"] },
+      { titulo: "Supervisor", aliases: ["(COT) Supervisor 🛡️", "(COT) Supervisor"] },
+      { titulo: "Agent", aliases: ["(COT) Agent 🛡️", "(COT) Agent"] },
     ],
   },
 
@@ -110,12 +110,12 @@ const DIVISOES = {
     cor: "#8a1b1b",
     brasao: "",
     patentes: [
-      { titulo: "Supervisor",   aliases: ["Supervisor Internal investigation", "Supervisor Internal investigation ⚖️"] },
-      { titulo: "Manager",      aliases: ["Manager Internal investigation", "Manager Internal investigation ⚖️"] },
-      { titulo: "Counselor",    aliases: ["(I.N.V) Counselor ⚖️", "(I.N.V) Counselor"] },
-      { titulo: "Senior",       aliases: ["(I.N.V) Senior ⚖️", "(I.N.V) Senior"] },
-      { titulo: "Official",     aliases: ["(I.N.V) Official ⚖️", "(I.N.V) Official"] },
-      { titulo: "Cadet",        aliases: ["(I.N.V) Cadet ⚖️", "(I.N.V) Cadet"] },
+      { titulo: "Supervisor", aliases: ["Supervisor Internal investigation", "Supervisor Internal investigation ⚖️"] },
+      { titulo: "Manager", aliases: ["Manager Internal investigation", "Manager Internal investigation ⚖️"] },
+      { titulo: "Counselor", aliases: ["(I.N.V) Counselor ⚖️", "(I.N.V) Counselor"] },
+      { titulo: "Senior", aliases: ["(I.N.V) Senior ⚖️", "(I.N.V) Senior"] },
+      { titulo: "Official", aliases: ["(I.N.V) Official ⚖️", "(I.N.V) Official"] },
+      { titulo: "Cadet", aliases: ["(I.N.V) Cadet ⚖️", "(I.N.V) Cadet"] },
       { titulo: "Probationary", aliases: ["(I.N.V) Probationary ⚖️", "(I.N.V) Probationary"] },
     ],
   },
@@ -125,24 +125,35 @@ const DIVISOES = {
     cor: "#8b0000",
     brasao: "",
     patentes: [
-      { titulo: "Supervisor",            aliases: ["Supervisor Detective Unit", "Supervisor Detective Unit 🔎"] },
-      { titulo: "Manager",               aliases: ["Manager Detective Unit", "Manager Detective Unit 🔎"] },
-      { titulo: "Detective-Lieutenant",  aliases: ["(D.U.) Detective-Lieutenant 🔎", "(D.U.) Detective-Lieutenant"] },
-      { titulo: "Detective III",         aliases: ["(D.U.) Detective III 🔎", "(D.U.) Detective III"] },
-      { titulo: "Detective II",          aliases: ["(D.U.) Detective II 🔎", "(D.U.) Detective II"] },
-      { titulo: "Detective I",           aliases: ["(D.U.) Detective I 🔎", "(D.U.) Detective I"] },
-      { titulo: "Prob. Detective",       aliases: ["(D.U.) Prob. Detective 🔎", "(D.U.) Prob. Detective"] },
+      { titulo: "Supervisor", aliases: ["Supervisor Detective Unit", "Supervisor Detective Unit 🔎"] },
+      { titulo: "Manager", aliases: ["Manager Detective Unit", "Manager Detective Unit 🔎"] },
+      { titulo: "Detective-Lieutenant", aliases: ["(D.U.) Detective-Lieutenant 🔎", "(D.U.) Detective-Lieutenant"] },
+      { titulo: "Detective III", aliases: ["(D.U.) Detective III 🔎", "(D.U.) Detective III"] },
+      { titulo: "Detective II", aliases: ["(D.U.) Detective II 🔎", "(D.U.) Detective II"] },
+      { titulo: "Detective I", aliases: ["(D.U.) Detective I 🔎", "(D.U.) Detective I"] },
+      { titulo: "Prob. Detective", aliases: ["(D.U.) Prob. Detective 🔎", "(D.U.) Prob. Detective"] },
     ],
   },
 };
 
-/* Busca role por qualquer uma das variações (case-insensitive, usando includes) */
+/* 🔍 Busca role por qualquer variação (case-insensitive, ignora acentos e emojis) */
 function findRole(guild, aliases) {
-  const target = aliases.map(a => a.toLowerCase());
-  return guild.roles.cache.find(role => {
-    const name = role.name.toLowerCase();
-    return target.some(t => name.includes(t));
-  }) || null;
+  const normalize = str =>
+    str
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w\s]/g, "")
+      .trim();
+
+  const target = aliases.map(a => normalize(a));
+
+  return (
+    guild.roles.cache.find(role => {
+      const name = normalize(role.name);
+      return target.some(t => name.includes(t));
+    }) || null
+  );
 }
 
 /* Monta a listagem “**Patente:** @membro, @membro / Vazio ” */
