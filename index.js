@@ -1,4 +1,4 @@
-// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Log Global)
+// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log Global)
 
 const {
   Client,
@@ -28,13 +28,15 @@ const hierarquia = require("./commands/hierarquia.js");
 const anonimo = require("./commands/anonimo.js");
 const mensagem = require("./commands/mensagem.js");
 const denuncia = require("./commands/denuncia.js");
-const arquivar = require("./commands/arquivar.js"); // Novo comando
+const arquivar = require("./commands/arquivar.js");
+const intimar = require("./commands/intimar.js"); // 🆕 Novo comando
 
 client.commands.set(hierarquia.data.name, hierarquia);
 client.commands.set(anonimo.data.name, anonimo);
 client.commands.set(mensagem.data.name, mensagem);
 client.commands.set(denuncia.data.name, denuncia);
-client.commands.set(arquivar.data.name, arquivar); // Adicionado
+client.commands.set(arquivar.data.name, arquivar);
+client.commands.set(intimar.data.name, intimar); // 🆕 Adicionado
 
 // ======= 3) REGISTRO DE COMANDOS (GLOBAL) =======
 client.once(Events.ClientReady, async (c) => {
@@ -47,6 +49,7 @@ client.once(Events.ClientReady, async (c) => {
     mensagem.data.toJSON(),
     denuncia.data.toJSON(),
     arquivar.data.toJSON(),
+    intimar.data.toJSON(), // 🆕 Adicionado
   ];
 
   try {
