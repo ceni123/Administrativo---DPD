@@ -1,4 +1,4 @@
-// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar)
+// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar - Registro Global)
 
 const {
   Client,
@@ -36,7 +36,7 @@ client.commands.set(mensagem.data.name, mensagem);
 client.commands.set(denuncia.data.name, denuncia);
 client.commands.set(arquivar.data.name, arquivar); // Adicionado
 
-// ======= 3) REGISTRO DE COMANDOS =======
+// ======= 3) REGISTRO DE COMANDOS (GLOBAL) =======
 client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot conectado como ${c.user.tag}`);
 
@@ -46,17 +46,19 @@ client.once(Events.ClientReady, async (c) => {
     anonimo.data.toJSON(),
     mensagem.data.toJSON(),
     denuncia.data.toJSON(),
-    arquivar.data.toJSON(), // Novo comando incluído
+    arquivar.data.toJSON(),
   ];
 
   try {
+    // Registro GLOBAL (comandos válidos em todos os servidores)
     await rest.put(
-      Routes.applicationGuildCommands(process.env.APP_ID, process.env.GUILD_ID),
+      Routes.applicationCommands(process.env.APP_ID),
       { body: commandsJson }
     );
-    console.log("✅ Todos os comandos foram registrados na guild com sucesso.");
+    console.log("🌍 Comandos registrados GLOBALMENTE com sucesso!");
+    console.log("⚠️ Pode levar até 1 hora para aparecer em todos os servidores.");
   } catch (err) {
-    console.error("❌ Erro ao registrar comandos:", err);
+    console.error("❌ Erro ao registrar comandos globalmente:", err);
   }
 });
 
