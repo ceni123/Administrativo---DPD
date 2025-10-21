@@ -13,10 +13,14 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    // 🛡️ Verificação de permissão
-    const cargosPermitidos = ["Council 💠", "Internal Investigation ⚖️"];
+    // 🛡️ Verificação de permissão via ID de cargo
+    const cargosPermitidosIDs = [
+      "1222682312035143710", // Council 💠
+      "1238253951535681536"  // Internal Investigation ⚖️
+    ];
+
     const temPermissao = interaction.member.roles.cache.some(r =>
-      cargosPermitidos.includes(r.name)
+      cargosPermitidosIDs.includes(r.id)
     );
 
     if (!temPermissao) {
@@ -43,10 +47,9 @@ module.exports = {
       return;
     }
 
-    // 🔍 Busca o cargo da I.N.V.
-    const invRole = interaction.guild.roles.cache.find(
-      (r) => r.name.toLowerCase().includes("internal investigation")
-    );
+    // 🔍 Cargo da I.N.V. por ID (estável)
+    const invRoleId = "1238253951535681536";
+    const invRole = interaction.guild.roles.cache.get(invRoleId);
 
     if (!invRole) {
       await interaction.reply({
