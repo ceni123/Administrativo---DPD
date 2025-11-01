@@ -208,14 +208,11 @@ async function gerarChartPizzaURL(titulo, { v, e, d }) {
         legend: { position: "bottom" },
         title: { display: true, text: titulo },
         tooltip: {
-          callbacks: {
-            label: (ctx) => `${ctx.label}: ${ctx.parsed}%`
-          }
+          callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed}%` }
         }
       }
     }
   });
-  // retorna URL curta de imagem
   return await chart.getShortUrl();
 }
 
@@ -238,7 +235,7 @@ const ACAO_CHOICES = [
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao") // <- sem acento
-    .setDescription("Registra uma ação policial (resultado, tipo, ação, oficiais, data e boletim) com planilha, resumo e gráficos.")
+    .setDescription("Registra ação policial (resultado, tipo, alvo, oficiais, data, boletim) + planilha e gráficos.")
     // OBRIGATÓRIAS:
     .addUserOption(o =>
       o.setName("autor")
