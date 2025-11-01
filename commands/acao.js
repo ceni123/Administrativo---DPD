@@ -59,8 +59,9 @@ function ensureMonthSheet(workbook, dateStrBR) {
   const sheetName = `${MESES[mesIndex]} ${ano}`;
 
   if (!workbook.SheetNames.includes(sheetName)) {
+    // ⬇️ Cabeçalho com coluna "Ação" entre Tipo e Oficiais
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Data", "Autor", "Resultado", "Tipo", "Oficiais", "Boletim", "Registrado em"]
+      ["Data", "Autor", "Resultado", "Tipo", "Ação", "Oficiais", "Boletim", "Registrado em"]
     ]);
     XLSX.utils.book_append_sheet(workbook, ws, sheetName);
   }
@@ -85,20 +86,18 @@ function atualizarResumo(workbook) {
     // pula cabeçalho
     for (let i = 1; i < linhas.length; i++) {
       const l = linhas[i];
-      if (!l || l.length < 7) continue;
-      const [data, autor, resultado, tipo, oficiais, boletim, registradoEm] = l;
-      todas.push({ data, autor, resultado, tipo, oficiais, boletim, registradoEm });
+      // agora esperamos 8 colunas (com "Ação")
+      if (!l || l.length < 8) continue;
+      const [data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm] = l;
+      todas.push({ data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm });
     }
   }
 
   // ranking por oficiais citados em "Oficiais"
   const mapa = {}; // { nome: { presencas, vitorias, derrotas } }
   for (const ac of todas) {
-    // separa por vírgula/; ou mantém @menções; fallback por espaços
-    let nomes = String(ac.oficiais)
-      .split(/[,;]\s*/)
-      .filter(Boolean);
-
+    // separa por vírgula/; e fallback por espaços (mantém @ se vierem separados por espaço)
+    let nomes = String(ac.oficiais).split(/[,;]\s*/).filter(Boolean);
     if (nomes.length === 0) {
       const fallback = String(ac.oficiais).split(/\s+/).filter(Boolean);
       if (fallback.length) nomes = fallback;
@@ -130,11 +129,26 @@ function atualizarResumo(workbook) {
   }
 }
 
+/* ========= Opções de "Ação/Alvo" ========= */
+const ACAO_CHOICES = [
+  { name: "Distribuidora", value: "Distribuidora" },
+  { name: "Joalheria", value: "Joalheria" },
+  { name: "Ammu Nation", value: "Ammu Nation" },
+  { name: "Burger Shot", value: "Burger Shot" },
+  { name: "Estação de Trem", value: "Estação de Trem" },
+  { name: "Conveniência", value: "Conveniência" },
+  { name: "Tatuagem", value: "Tatuagem" },
+  { name: "Pier 45", value: "Pier 45" },
+  { name: "Fleeca", value: "Fleeca" },
+  { name: "Venda de Drogas", value: "Venda de Drogas" },
+  { name: "Caixa eletrônico/Registradora", value: "Caixa eletrônico/Registradora" },
+];
+
 /* ========= Comando ========= */
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao") // <- sem acento (Discord exige a-z0-9_-)
-    .setDescription("Registra uma ação policial (resultado, tipo, oficiais, data e boletim) com planilha e resumo.")
+    .setDescription("Registra uma ação policial (resultado, tipo, ação, oficiais, data e boletim) com planilha e resumo.")
     // ⚠️ Todas as opções OBRIGATÓRIAS primeiro:
     .addUserOption(o =>
       o.setName("autor")
@@ -161,6 +175,12 @@ module.exports = {
         )
     )
     .addStringOption(o =>
+      o.setName("acao_alvo")
+        .setDescription("Qual foi a Ação/Alvo")
+        .setRequired(true)
+        .addChoices(...ACAO_CHOICES)
+    )
+    .addStringOption(o =>
       o.setName("oficiais")
         .setDescription("Oficiais presentes (use @menções ou nomes, separados por espaço/vírgula)")
         .setRequired(true)
@@ -184,6 +204,7 @@ module.exports = {
 
       const resultado = interaction.options.getString("resultado", true);
       const tipo = interaction.options.getString("tipo", true);
+      const acaoAlvo = interaction.options.getString("acao_alvo", true);
       const oficiais = interaction.options.getString("oficiais", true);
       const boletim = interaction.options.getString("boletim", true);
       const dataIn = interaction.options.getString("data") || "";
@@ -203,6 +224,7 @@ module.exports = {
           { name: "Autor do Comando", value: autor, inline: true },
           { name: "Resultado", value: resultado, inline: true },
           { name: "Tipo", value: tipo, inline: true },
+          { name: "Ação", value: acaoAlvo, inline: true },
           { name: "Data", value: dataBR, inline: true },
           { name: "Boletim", value: `\`${boletim}\``, inline: true },
           { name: "Oficiais Presentes", value: oficiais }
@@ -216,11 +238,13 @@ module.exports = {
       const wb = ensureWorkbook();
       const sheetName = ensureMonthSheet(wb, dataBR);
 
+      // ordem compatível com o cabeçalho novo (com "Ação")
       appendRow(wb, sheetName, [
         dataBR,            // Data
         autor,             // Autor
         resultado,         // Resultado
         tipo,              // Tipo
+        acaoAlvo,          // Ação (novo)
         oficiais,          // Oficiais
         boletim,           // Boletim
         timestamp,         // Registrado em
