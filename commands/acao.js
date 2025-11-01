@@ -94,16 +94,14 @@ function atualizarResumo(workbook) {
   // ranking por oficiais citados em "Oficiais"
   const mapa = {}; // { nome: { presencas, vitorias, derrotas } }
   for (const ac of todas) {
-    // separa por @, vírgula, ponto e vírgula ou quebra de linha
-    const nomes = String(ac.oficiais)
-      .split(/[\s]*[,;]\s*|(\s)(?=@)/g) // separa em vírgula/; ou mantém @menções juntas
+    // separa por vírgula/; ou mantém @menções; fallback por espaços
+    let nomes = String(ac.oficiais)
+      .split(/[,;]\s*/)
       .filter(Boolean);
 
-    // alternativa robusta: também quebra por espaços mas preserva @menções inteiras
-    // se a linha vier com " @A @B @C " também funciona
     if (nomes.length === 0) {
       const fallback = String(ac.oficiais).split(/\s+/).filter(Boolean);
-      if (fallback.length) nomes.push(...fallback);
+      if (fallback.length) nomes = fallback;
     }
 
     for (let nome of nomes) {
@@ -137,6 +135,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao") // <- sem acento (Discord exige a-z0-9_-)
     .setDescription("Registra uma ação policial (resultado, tipo, oficiais, data e boletim) com planilha e resumo.")
+    // ⚠️ Todas as opções OBRIGATÓRIAS primeiro:
     .addUserOption(o =>
       o.setName("autor")
         .setDescription("Quem está registrando a ação (mencione com @)")
@@ -149,7 +148,7 @@ module.exports = {
         .addChoices(
           { name: "Vitória 🟢", value: "Vitória" },
           { name: "Derrota 🔴", value: "Derrota" },
-          { name: "Empate 🟡", value: "Empate" },
+          { name: "Empate 🟡", value: "Empate" }
         )
     )
     .addStringOption(o =>
@@ -158,7 +157,7 @@ module.exports = {
         .setRequired(true)
         .addChoices(
           { name: "Fuga 🚔", value: "Fuga" },
-          { name: "Tiroteio 🔫", value: "Tiroteio" },
+          { name: "Tiroteio 🔫", value: "Tiroteio" }
         )
     )
     .addStringOption(o =>
@@ -167,14 +166,15 @@ module.exports = {
         .setRequired(true)
     )
     .addStringOption(o =>
-      o.setName("data")
-        .setDescription("Data da ação (DD/MM/AAAA, DD-MM-AAAA ou AAAA-MM-DD). Vazio = hoje.")
-        .setRequired(false)
-    )
-    .addStringOption(o =>
       o.setName("boletim")
         .setDescription("Número do boletim da prisão")
         .setRequired(true)
+    )
+    // Depois, as OPCIONAIS:
+    .addStringOption(o =>
+      o.setName("data")
+        .setDescription("Data da ação (DD/MM/AAAA, DD-MM-AAAA ou AAAA-MM-DD). Vazio = hoje.")
+        .setRequired(false)
     ),
 
   async execute(interaction) {
@@ -185,9 +185,8 @@ module.exports = {
       const resultado = interaction.options.getString("resultado", true);
       const tipo = interaction.options.getString("tipo", true);
       const oficiais = interaction.options.getString("oficiais", true);
-      const dataIn = interaction.options.getString("data") || "";
       const boletim = interaction.options.getString("boletim", true);
-
+      const dataIn = interaction.options.getString("data") || "";
       const dataBR = parseDataFlex(dataIn) || hojeBR();
       const timestamp = new Date().toLocaleString("pt-BR");
 
