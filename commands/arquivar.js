@@ -1,11 +1,11 @@
-// commands/arquivar.js — Move o canal atual para "Ticket´s I.N.V Arquivado"
+// commands/arquivar.js — Move o canal atual para a categoria de arquivados e remove acesso do autor
 
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, ChannelType } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("arquivar")
-    .setDescription("Arquiva o canal atual movendo-o para 'Ticket´s I.N.V Arquivado'.")
+    .setDescription("Arquiva o canal atual movendo-o para a categoria de arquivados e remove o acesso do autor.")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   async execute(interaction) {
@@ -26,35 +26,62 @@ module.exports = {
       });
     }
 
+    // ✅ Confere se o BOT tem permissão para mover canais
+    const me = interaction.guild.members.me;
+    if (!me.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      return interaction.reply({
+        content: "❌ Não posso arquivar: estou sem a permissão **Gerenciar Canais**.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
     try {
       const canalAtual = interaction.channel;
       const guild = interaction.guild;
 
-      // Procura a categoria pelo nome (sem depender de ID)
-      const categoriaArquivada = guild.channels.cache.find(
-        (c) =>
-          c.name.toLowerCase().includes("ticket´s i.n.v arquivado") &&
-          c.type === 4 // Categoria
-      );
-
-      if (!categoriaArquivada) {
-        await interaction.reply({
-          content: '❌ Categoria **"Ticket´s I.N.V Arquivado"** não encontrada no servidor.',
+      // Garantir que é um canal de texto do servidor
+      if (canalAtual.type !== ChannelType.GuildText) {
+        return interaction.reply({
+          content: "❌ Este comando deve ser usado em um **canal de texto do servidor** (não em thread/DM).",
           flags: MessageFlags.Ephemeral,
         });
-        return;
       }
 
-      // Move o canal
-      await canalAtual.setParent(categoriaArquivada.id);
+      // 🗂️ Categoria fixa (ID informado por você)
+      const categoriaArquivadaId = "1345459676636119110";
+      const categoriaArquivada = guild.channels.cache.get(categoriaArquivadaId);
 
-      // Ajusta as permissões para impedir novas mensagens
+      if (!categoriaArquivada || categoriaArquivada.type !== ChannelType.GuildCategory) {
+        return interaction.reply({
+          content: "❌ Categoria de arquivados não encontrada ou inválida. Verifique o ID **1345459676636119110**.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      // 🧭 Move o canal para a categoria de arquivados
+      await canalAtual.setParent(categoriaArquivada.id, { lockPermissions: false });
+
+      // 🚫 Impede novas mensagens do @everyone
       await canalAtual.permissionOverwrites.edit(guild.roles.everyone, {
         SendMessages: false,
       });
 
+      // 👤 Remove os overwrites de USUÁRIOS (retira o acesso de quem abriu a denúncia)
+      // Obs.: investigadores têm acesso por CARGO, então continuam vendo.
+      for (const overwrite of canalAtual.permissionOverwrites.cache.values()) {
+        // overwrite.type === 1 => Member (usuário) em discord.js v14
+        if (overwrite.type === 1) {
+          try {
+            await canalAtual.permissionOverwrites.delete(overwrite.id);
+          } catch (e) {
+            // segue mesmo se um overwrite específico falhar
+            console.warn(`Não foi possível remover overwrite do usuário ${overwrite.id}:`, e?.message ?? e);
+          }
+        }
+      }
+
       await interaction.reply({
-        content: `📁 O canal **${canalAtual.name}** foi movido para a categoria **Ticket´s I.N.V Arquivado**.`,
+        content: `📁 O canal **${canalAtual.name}** foi movido para **${categoriaArquivada.name}** e o acesso do autor foi removido.`,
         flags: MessageFlags.Ephemeral,
       });
     } catch (error) {
