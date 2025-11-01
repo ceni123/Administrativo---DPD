@@ -1,9 +1,8 @@
-// commands/acao.js — Registro de ações com planilha mensal, Resumo e gráficos de pizza (tiro/fuga)
+// commands/acao.js — Registra ação, atualiza planilha e resumo (SEM gráficos)
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
-const QuickChart = require("quickchart-js");
 
 /* ========= Utilidades de data ========= */
 function hojeBR() {
@@ -143,79 +142,6 @@ function atualizarResumo(workbook) {
   }
 }
 
-/* ========= Estatísticas para gráficos ========= */
-function coletarTodasAcoes(workbook) {
-  const todas = [];
-  for (const name of workbook.SheetNames) {
-    if (name === "Resumo") continue;
-    const ws = workbook.Sheets[name];
-    if (!ws) continue;
-    const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-    for (let i = 1; i < linhas.length; i++) {
-      const l = linhas[i];
-      if (!l || l.length < 8) continue;
-      const [data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm] = l;
-      todas.push({ data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm });
-    }
-  }
-  return todas;
-}
-
-function computarPercentuaisPorTipo(acoes) {
-  const base = {
-    Tiroteio: { v: 0, e: 0, d: 0, total: 0 },
-    Fuga: { v: 0, e: 0, d: 0, total: 0 },
-  };
-
-  for (const ac of acoes) {
-    const tipo = String(ac.tipo);
-    const r = String(ac.resultado).toLowerCase();
-    const alvo = (tipo.includes("Tiro") ? "Tiroteio" : tipo.includes("Fuga") ? "Fuga" : null);
-    if (!alvo) continue;
-
-    base[alvo].total++;
-    if (r.includes("vit")) base[alvo].v++;
-    else if (r.includes("emp")) base[alvo].e++;
-    else if (r.includes("der")) base[alvo].d++;
-  }
-
-  // retorna em porcentagens (0-100) com 1 casa decimal
-  const pct = {};
-  for (const k of Object.keys(base)) {
-    const t = base[k].total || 1; // evita divisão por zero
-    pct[k] = {
-      v: +(base[k].v * 100 / t).toFixed(1),
-      e: +(base[k].e * 100 / t).toFixed(1),
-      d: +(base[k].d * 100 / t).toFixed(1),
-      total: base[k].total
-    };
-  }
-  return pct;
-}
-
-async function gerarChartPizzaURL(titulo, { v, e, d }) {
-  const chart = new QuickChart();
-  chart.setConfig({
-    type: "pie",
-    data: {
-      labels: ["Vitória", "Empate", "Derrota"],
-      datasets: [{
-        data: [v, e, d]
-      }]
-    },
-    options: {
-      plugins: {
-        legend: { position: "bottom" },
-        title: { display: true, text: titulo },
-        tooltip: {
-          callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed}%` }
-        }
-      }
-    }
-  });
-  return await chart.getShortUrl();
-}
-
 /* ========= Opções de "Ação/Alvo" ========= */
 const ACAO_CHOICES = [
   { name: "Distribuidora", value: "Distribuidora" },
@@ -235,7 +161,7 @@ const ACAO_CHOICES = [
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao") // <- sem acento
-    .setDescription("Registra ação policial (resultado, tipo, alvo, oficiais, data, boletim) + planilha e gráficos.")
+    .setDescription("Registra ação policial (resultado, tipo, alvo, oficiais, data, boletim) + planilha.")
     // OBRIGATÓRIAS:
     .addUserOption(o =>
       o.setName("autor")
@@ -345,30 +271,9 @@ module.exports = {
       atualizarResumo(wb);
       XLSX.writeFile(wb, FILE_PATH);
 
-      // ===== Gráficos de pizza (porcentagens por tipo) =====
-      const todas = coletarTodasAcoes(wb);
-      const pct = computarPercentuaisPorTipo(todas);
-
-      const urlTiro = await gerarChartPizzaURL(
-        `Tiroteio — ${pct.Tiroteio.total} ações`,
-        { v: pct.Tiroteio.v, e: pct.Tiroteio.e, d: pct.Tiroteio.d }
-      );
-
-      const urlFuga = await gerarChartPizzaURL(
-        `Fuga — ${pct.Fuga.total} ações`,
-        { v: pct.Fuga.v, e: pct.Fuga.e, d: pct.Fuga.d }
-      );
-
-      await interaction.channel.send({
-        content:
-          `📊 **Desempenho (porcentagens)**\n` +
-          `**Tiroteio:** ${pct.Tiroteio.v}% vitória • ${pct.Tiroteio.e}% empate • ${pct.Tiroteio.d}% derrota\n${urlTiro}\n\n` +
-          `**Fuga:** ${pct.Fuga.v}% vitória • ${pct.Fuga.e}% empate • ${pct.Fuga.d}% derrota\n${urlFuga}`
-      });
-
       // Confirmação privada
       await interaction.reply({
-        content: "✅ Ação registrada, planilha atualizada, resumo recalculado e gráficos publicados no canal.",
+        content: "✅ Ação registrada, planilha atualizada e resumo recalculado.",
         flags: MessageFlags.Ephemeral,
       });
     } catch (err) {
