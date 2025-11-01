@@ -1,8 +1,36 @@
-// commands/acao.js — Registra ação, atualiza planilha e resumo (SEM gráficos)
+// commands/acao.js — Registra ação, atualiza planilha e resumo (SEM gráficos) + persistência e backup
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
+
+/* ========= Config de persistência ========= */
+// Use um volume persistente e aponte DATA_DIR para lá (ex.: /var/data, /opt/render/project/src/data, etc.)
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+const LEGACY_FILE_PATH = path.join(__dirname, "../acoes_dpd.xlsx");               // caminho antigo (dentro do código)
+const FILE_PATH = path.join(DATA_DIR, "acoes_dpd.xlsx");                          // caminho novo (persistente)
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  // Migra automaticamente o arquivo legado (se existir) para o diretório persistente
+  if (fs.existsSync(LEGACY_FILE_PATH) && !fs.existsSync(FILE_PATH)) {
+    try { fs.copyFileSync(LEGACY_FILE_PATH, FILE_PATH); } catch (e) { console.warn("⚠️ Falha ao migrar XLSX legado:", e); }
+  }
+}
+
+function safeWriteFile(workbook) {
+  // Backup diário antes de gravar
+  const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const backupPath = path.join(DATA_DIR, `acoes_dpd.${stamp}.bak.xlsx`);
+  try {
+    if (fs.existsSync(FILE_PATH) && !fs.existsSync(backupPath)) {
+      fs.copyFileSync(FILE_PATH, backupPath);
+    }
+  } catch (e) {
+    console.warn("⚠️ Falha ao criar backup do XLSX:", e);
+  }
+  XLSX.writeFile(workbook, FILE_PATH);
+}
 
 /* ========= Utilidades de data ========= */
 function hojeBR() {
@@ -34,8 +62,6 @@ const MESES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-const FILE_PATH = path.join(__dirname, "../acoes_dpd.xlsx");
-
 /* ========= Helpers de planilha ========= */
 function applyColumnWidths(ws) {
   ws["!cols"] = [
@@ -51,6 +77,7 @@ function applyColumnWidths(ws) {
 }
 
 function ensureWorkbook() {
+  ensureDataDir();
   if (fs.existsSync(FILE_PATH)) {
     return XLSX.readFile(FILE_PATH);
   }
@@ -144,12 +171,8 @@ async function oficiaisParaApelidos(texto, guild) {
   if (!texto) return "";
   let resultado = texto;
 
-  // 1) Coleta IDs em menções <@123> ou <@!123>
   const idsMencoes = [...texto.matchAll(/<@!?(\d+)>/g)].map(m => m[1]);
-
-  // 2) Coleta IDs "soltos" (17-20 dígitos)
   const idsSoltos = [...texto.matchAll(/\b(\d{17,20})\b/g)].map(m => m[1]);
-
   const ids = Array.from(new Set([...idsMencoes, ...idsSoltos]));
   const mapa = {};
 
@@ -163,14 +186,12 @@ async function oficiaisParaApelidos(texto, guild) {
     }
   }
 
-  // Substitui menções completas por nome
   for (const id of ids) {
     if (!mapa[id]) continue;
     resultado = resultado
-      .replace(new RegExp(`<@!?${id}>`, "g"), mapa[id])  // menções
-      .replace(new RegExp(`\\b${id}\\b`, "g"), mapa[id]); // ids soltos
+      .replace(new RegExp(`<@!?${id}>`, "g"), mapa[id])
+      .replace(new RegExp(`\\b${id}\\b`, "g"), mapa[id]);
   }
-
   return resultado;
 }
 
@@ -192,9 +213,8 @@ const ACAO_CHOICES = [
 /* ========= Comando ========= */
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("acao") // <- sem acento
+    .setName("acao")
     .setDescription("Registra ação policial (resultado, tipo, alvo, oficiais, data, boletim) + planilha.")
-    // OBRIGATÓRIAS:
     .addUserOption(o =>
       o.setName("autor")
         .setDescription("Quem está registrando a ação (mencione com @)")
@@ -235,7 +255,6 @@ module.exports = {
         .setDescription("Número do boletim da prisão")
         .setRequired(true)
     )
-    // OPCIONAL:
     .addStringOption(o =>
       o.setName("data")
         .setDescription("Data da ação (DD/MM/AAAA, DD-MM-AAAA ou AAAA-MM-DD). Vazio = hoje.")
@@ -249,8 +268,8 @@ module.exports = {
       const autorMember =
         interaction.guild.members.cache.get(autorUser.id) ||
         await interaction.guild.members.fetch(autorUser.id).catch(() => null);
-      const autorNome = autorMember?.nickname || autorMember?.displayName || autorUser.username; // Nome para planilha
-      const autorMencao = `<@${autorUser.id}>`; // Para embed no canal
+      const autorNome = autorMember?.nickname || autorMember?.displayName || autorUser.username;
+      const autorMencao = `<@${autorUser.id}>`;
 
       const resultado = interaction.options.getString("resultado", true);
       const tipo = interaction.options.getString("tipo", true);
@@ -280,7 +299,7 @@ module.exports = {
           { name: "Ação", value: acaoAlvo, inline: true },
           { name: "Data", value: dataBR, inline: true },
           { name: "Boletim", value: `\`${boletim}\``, inline: true },
-          { name: "Oficiais Presentes", value: oficiaisInput } // mantém menções no canal
+          { name: "Oficiais Presentes", value: oficiaisInput }
         )
         .setFooter({ text: `Registrado por ${interaction.user.tag}` })
         .setTimestamp();
@@ -303,9 +322,8 @@ module.exports = {
       ]);
 
       atualizarResumo(wb);
-      XLSX.writeFile(wb, FILE_PATH);
+      safeWriteFile(wb); // grava com backup diário no diretório persistente
 
-      // Confirmação privada
       await interaction.reply({
         content: "✅ Ação registrada, planilha atualizada (apelidos) e resumo recalculado.",
         flags: MessageFlags.Ephemeral,
