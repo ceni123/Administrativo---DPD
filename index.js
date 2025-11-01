@@ -154,19 +154,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   // ===== BOTÃO DE DENÚNCIA =====
   if (interaction.isButton() && interaction.customId === "abrir_denuncia") {
-    const categoria = interaction.guild.channels.cache.find(
-      (c) =>
-        c.name.toLowerCase().includes("ticket´s i.n.v") &&
-        c.type === ChannelType.GuildCategory
-    );
+    // ✅ Categoria fixa por ID (pedido do Felipe)
+    const categoriaId = "1345458805449818112";
+    const categoria = interaction.guild.channels.cache.get(categoriaId);
 
     if (!categoria) {
       await interaction.reply({
-        content: '❌ Categoria **"Ticket´s I.N.V"** não encontrada no servidor.',
+        content: "❌ Categoria de denúncias não encontrada no servidor (verifique o ID).",
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
+
+    // ✅ Cargos que devem ver e falar no ticket
+    const invRoleId = "1238253951535681536";     // Internal Investigation ⚖️
+    const councilRoleId = "1222682312035143710"; // Council 💠 (opcional; remova se quiser só I.N.V.)
 
     const randomId = Math.floor(Math.random() * 100000);
 
@@ -176,12 +178,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
       parent: categoria.id,
       topic: `Denúncia aberta por ${interaction.user.tag}`,
       permissionOverwrites: [
+        // Bloqueia todos
         {
           id: interaction.guild.roles.everyone,
           deny: [PermissionFlagsBits.ViewChannel],
         },
+        // Autor da denúncia
         {
           id: interaction.user.id,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.ReadMessageHistory,
+          ],
+        },
+        // ✅ Internal Investigation: ver e conversar
+        {
+          id: invRoleId,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.ReadMessageHistory,
+          ],
+        },
+        // ✅ Council (opcional) — remova este bloco se quiser exclusivo da I.N.V.
+        {
+          id: councilRoleId,
           allow: [
             PermissionFlagsBits.ViewChannel,
             PermissionFlagsBits.SendMessages,
