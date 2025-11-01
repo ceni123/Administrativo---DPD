@@ -34,6 +34,7 @@ const denuncia = require("./commands/denuncia.js");
 const arquivar = require("./commands/arquivar.js");
 const intimar = require("./commands/intimar.js");
 const verificar_roles = require("./commands/verificar_roles.js");
+const acao = require("./commands/acao.js"); // 🆕 /ação
 
 client.commands.set(hierarquia.data.name, hierarquia);
 client.commands.set(anonimo.data.name, anonimo);
@@ -42,6 +43,7 @@ client.commands.set(denuncia.data.name, denuncia);
 client.commands.set(arquivar.data.name, arquivar);
 client.commands.set(intimar.data.name, intimar);
 client.commands.set(verificar_roles.data.name, verificar_roles);
+client.commands.set(acao.data.name, acao); // 🆕 registra /ação
 
 // ======= 3) REGISTRO DE COMANDOS (E LIMPEZA GLOBAL) =======
 client.once(Events.ClientReady, async (c) => {
@@ -66,6 +68,7 @@ client.once(Events.ClientReady, async (c) => {
     arquivar.data.toJSON(),
     intimar.data.toJSON(),
     verificar_roles.data.toJSON(),
+    acao.data.toJSON(), // 🆕 inclui /ação
   ];
 
   const servidores = [
@@ -154,7 +157,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   // ===== BOTÃO DE DENÚNCIA =====
   if (interaction.isButton() && interaction.customId === "abrir_denuncia") {
-    // ✅ Categoria fixa por ID (pedido do Felipe)
+    // ✅ Categoria fixa por ID
     const categoriaId = "1345458805449818112";
     const categoria = interaction.guild.channels.cache.get(categoriaId);
 
