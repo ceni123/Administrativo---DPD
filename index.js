@@ -1,5 +1,5 @@
-// index.js — BOT DPD COMPLETO (v1.1 — Atualização com comando /ação)
-// Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores + Verificar Roles + Ação + Limpeza de Comandos Duplicados
+// index.js — BOT DPD COMPLETO (v1.2 — + /planilha)
+// Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores + Verificar Roles + Ação + Planilha + Limpeza de Comandos Duplicados
 
 const {
   Client,
@@ -35,7 +35,8 @@ const denuncia = require("./commands/denuncia.js");
 const arquivar = require("./commands/arquivar.js");
 const intimar = require("./commands/intimar.js");
 const verificar_roles = require("./commands/verificar_roles.js");
-const acao = require("./commands/acao.js"); // 🆕 Novo comando /ação
+const acao = require("./commands/acao.js"); // /acao
+const planilha = require("./commands/planilha.js"); // 🆕 /planilha
 
 client.commands.set(hierarquia.data.name, hierarquia);
 client.commands.set(anonimo.data.name, anonimo);
@@ -44,7 +45,9 @@ client.commands.set(denuncia.data.name, denuncia);
 client.commands.set(arquivar.data.name, arquivar);
 client.commands.set(intimar.data.name, intimar);
 client.commands.set(verificar_roles.data.name, verificar_roles);
-client.commands.set(acao.data.name, acao); // ✅ Registra /ação
+client.commands.set(acao.data.name, acao);
+client.commands.set(planilha.data.name, planilha); // 🆕
+
 
 // ======= 3) REGISTRO DE COMANDOS (E LIMPEZA GLOBAL) =======
 client.once(Events.ClientReady, async (c) => {
@@ -69,7 +72,8 @@ client.once(Events.ClientReady, async (c) => {
     arquivar.data.toJSON(),
     intimar.data.toJSON(),
     verificar_roles.data.toJSON(),
-    acao.data.toJSON(), // 🆕 Inclui /ação
+    acao.data.toJSON(),
+    planilha.data.toJSON(), // 🆕 inclui /planilha
   ];
 
   const servidores = [
