@@ -1,8 +1,9 @@
-// commands/acao.js — Registro de ações com planilha mensal e aba de Resumo (presenças, vitórias, derrotas)
+// commands/acao.js — Registro de ações com planilha mensal, Resumo e gráficos de pizza (tiro/fuga)
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
+const QuickChart = require("quickchart-js");
 
 /* ========= Utilidades de data ========= */
 function hojeBR() {
@@ -36,7 +37,21 @@ const MESES = [
 
 const FILE_PATH = path.join(__dirname, "../acoes_dpd.xlsx");
 
-/* ========= Funções de planilha ========= */
+/* ========= Helpers de planilha ========= */
+function applyColumnWidths(ws) {
+  // Larguras em 'caracteres' (wch) para cada coluna
+  ws["!cols"] = [
+    { wch: 12 }, // Data
+    { wch: 28 }, // Autor (nome)
+    { wch: 12 }, // Resultado
+    { wch: 12 }, // Tipo
+    { wch: 24 }, // Ação
+    { wch: 40 }, // Oficiais
+    { wch: 18 }, // Boletim
+    { wch: 22 }, // Registrado em
+  ];
+}
+
 function ensureWorkbook() {
   if (fs.existsSync(FILE_PATH)) {
     return XLSX.readFile(FILE_PATH);
@@ -59,44 +74,42 @@ function ensureMonthSheet(workbook, dateStrBR) {
   const sheetName = `${MESES[mesIndex]} ${ano}`;
 
   if (!workbook.SheetNames.includes(sheetName)) {
-    // ⬇️ Cabeçalho com coluna "Ação" entre Tipo e Oficiais
     const ws = XLSX.utils.aoa_to_sheet([
       ["Data", "Autor", "Resultado", "Tipo", "Ação", "Oficiais", "Boletim", "Registrado em"]
     ]);
+    applyColumnWidths(ws);
     XLSX.utils.book_append_sheet(workbook, ws, sheetName);
   }
   return sheetName;
 }
 
 function appendRow(workbook, sheetName, row) {
-  const ws = workbook.Sheets[sheetName];
-  const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+  const wsOld = workbook.Sheets[sheetName];
+  const data = XLSX.utils.sheet_to_json(wsOld, { header: 1, defval: "" });
   data.push(row);
-  workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(data);
+  const wsNew = XLSX.utils.aoa_to_sheet(data);
+  applyColumnWidths(wsNew); // garante largura após reescrita
+  workbook.Sheets[sheetName] = wsNew;
 }
 
 function atualizarResumo(workbook) {
-  // agrega todas as abas exceto "Resumo"
   const todas = [];
   for (const name of workbook.SheetNames) {
     if (name === "Resumo") continue;
     const ws = workbook.Sheets[name];
     if (!ws) continue;
     const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-    // pula cabeçalho
     for (let i = 1; i < linhas.length; i++) {
       const l = linhas[i];
-      // agora esperamos 8 colunas (com "Ação")
       if (!l || l.length < 8) continue;
       const [data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm] = l;
       todas.push({ data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm });
     }
   }
 
-  // ranking por oficiais citados em "Oficiais"
+  // ranking por oficiais citados
   const mapa = {}; // { nome: { presencas, vitorias, derrotas } }
   for (const ac of todas) {
-    // separa por vírgula/; e fallback por espaços (mantém @ se vierem separados por espaço)
     let nomes = String(ac.oficiais).split(/[,;]\s*/).filter(Boolean);
     if (nomes.length === 0) {
       const fallback = String(ac.oficiais).split(/\s+/).filter(Boolean);
@@ -122,11 +135,88 @@ function atualizarResumo(workbook) {
     });
 
   const resumoWS = XLSX.utils.aoa_to_sheet(rows);
+  resumoWS["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
   if (workbook.SheetNames.includes("Resumo")) {
     workbook.Sheets["Resumo"] = resumoWS;
   } else {
     XLSX.utils.book_append_sheet(workbook, resumoWS, "Resumo");
   }
+}
+
+/* ========= Estatísticas para gráficos ========= */
+function coletarTodasAcoes(workbook) {
+  const todas = [];
+  for (const name of workbook.SheetNames) {
+    if (name === "Resumo") continue;
+    const ws = workbook.Sheets[name];
+    if (!ws) continue;
+    const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    for (let i = 1; i < linhas.length; i++) {
+      const l = linhas[i];
+      if (!l || l.length < 8) continue;
+      const [data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm] = l;
+      todas.push({ data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm });
+    }
+  }
+  return todas;
+}
+
+function computarPercentuaisPorTipo(acoes) {
+  const base = {
+    Tiroteio: { v: 0, e: 0, d: 0, total: 0 },
+    Fuga: { v: 0, e: 0, d: 0, total: 0 },
+  };
+
+  for (const ac of acoes) {
+    const tipo = String(ac.tipo);
+    const r = String(ac.resultado).toLowerCase();
+    const alvo = (tipo.includes("Tiro") ? "Tiroteio" : tipo.includes("Fuga") ? "Fuga" : null);
+    if (!alvo) continue;
+
+    base[alvo].total++;
+    if (r.includes("vit")) base[alvo].v++;
+    else if (r.includes("emp")) base[alvo].e++;
+    else if (r.includes("der")) base[alvo].d++;
+  }
+
+  // retorna em porcentagens (0-100) com 1 casa decimal
+  const pct = {};
+  for (const k of Object.keys(base)) {
+    const t = base[k].total || 1; // evita divisão por zero
+    pct[k] = {
+      v: +(base[k].v * 100 / t).toFixed(1),
+      e: +(base[k].e * 100 / t).toFixed(1),
+      d: +(base[k].d * 100 / t).toFixed(1),
+      total: base[k].total
+    };
+  }
+  return pct;
+}
+
+async function gerarChartPizzaURL(titulo, { v, e, d }) {
+  const chart = new QuickChart();
+  chart.setConfig({
+    type: "pie",
+    data: {
+      labels: ["Vitória", "Empate", "Derrota"],
+      datasets: [{
+        data: [v, e, d]
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: "bottom" },
+        title: { display: true, text: titulo },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.label}: ${ctx.parsed}%`
+          }
+        }
+      }
+    }
+  });
+  // retorna URL curta de imagem
+  return await chart.getShortUrl();
 }
 
 /* ========= Opções de "Ação/Alvo" ========= */
@@ -147,9 +237,9 @@ const ACAO_CHOICES = [
 /* ========= Comando ========= */
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("acao") // <- sem acento (Discord exige a-z0-9_-)
-    .setDescription("Registra uma ação policial (resultado, tipo, ação, oficiais, data e boletim) com planilha e resumo.")
-    // ⚠️ Todas as opções OBRIGATÓRIAS primeiro:
+    .setName("acao") // <- sem acento
+    .setDescription("Registra uma ação policial (resultado, tipo, ação, oficiais, data e boletim) com planilha, resumo e gráficos.")
+    // OBRIGATÓRIAS:
     .addUserOption(o =>
       o.setName("autor")
         .setDescription("Quem está registrando a ação (mencione com @)")
@@ -190,7 +280,7 @@ module.exports = {
         .setDescription("Número do boletim da prisão")
         .setRequired(true)
     )
-    // Depois, as OPCIONAIS:
+    // OPCIONAL:
     .addStringOption(o =>
       o.setName("data")
         .setDescription("Data da ação (DD/MM/AAAA, DD-MM-AAAA ou AAAA-MM-DD). Vazio = hoje.")
@@ -199,8 +289,13 @@ module.exports = {
 
   async execute(interaction) {
     try {
+      // === Autor: salva NOME na planilha (displayName preferencial; fallback username) ===
       const autorUser = interaction.options.getUser("autor", true);
-      const autor = `<@${autorUser.id}>`;
+      const autorMember =
+        interaction.guild.members.cache.get(autorUser.id) ||
+        await interaction.guild.members.fetch(autorUser.id).catch(() => null);
+      const autorNome = autorMember?.displayName ?? autorUser.username; // <- Nome para planilha
+      const autorMencao = `<@${autorUser.id}>`; // <- Para embed no canal
 
       const resultado = interaction.options.getString("resultado", true);
       const tipo = interaction.options.getString("tipo", true);
@@ -211,7 +306,7 @@ module.exports = {
       const dataBR = parseDataFlex(dataIn) || hojeBR();
       const timestamp = new Date().toLocaleString("pt-BR");
 
-      // ===== Embed no canal =====
+      // ===== Embed público no canal =====
       const color =
         resultado === "Vitória" ? "#00C853" :
         resultado === "Derrota" ? "#E53935" :
@@ -221,7 +316,7 @@ module.exports = {
         .setColor(color)
         .setTitle("📋 Relatório de Ação Policial")
         .addFields(
-          { name: "Autor do Comando", value: autor, inline: true },
+          { name: "Autor do Comando", value: autorMencao, inline: true },
           { name: "Resultado", value: resultado, inline: true },
           { name: "Tipo", value: tipo, inline: true },
           { name: "Ação", value: acaoAlvo, inline: true },
@@ -238,13 +333,13 @@ module.exports = {
       const wb = ensureWorkbook();
       const sheetName = ensureMonthSheet(wb, dataBR);
 
-      // ordem compatível com o cabeçalho novo (com "Ação")
+      // Grava NOME do autor (não o ID/menção) na planilha
       appendRow(wb, sheetName, [
         dataBR,            // Data
-        autor,             // Autor
+        autorNome,         // Autor (nome/apelido no servidor)
         resultado,         // Resultado
         tipo,              // Tipo
-        acaoAlvo,          // Ação (novo)
+        acaoAlvo,          // Ação
         oficiais,          // Oficiais
         boletim,           // Boletim
         timestamp,         // Registrado em
@@ -253,17 +348,40 @@ module.exports = {
       atualizarResumo(wb);
       XLSX.writeFile(wb, FILE_PATH);
 
+      // ===== Gráficos de pizza (porcentagens por tipo) =====
+      const todas = coletarTodasAcoes(wb);
+      const pct = computarPercentuaisPorTipo(todas);
+
+      const urlTiro = await gerarChartPizzaURL(
+        `Tiroteio — ${pct.Tiroteio.total} ações`,
+        { v: pct.Tiroteio.v, e: pct.Tiroteio.e, d: pct.Tiroteio.d }
+      );
+
+      const urlFuga = await gerarChartPizzaURL(
+        `Fuga — ${pct.Fuga.total} ações`,
+        { v: pct.Fuga.v, e: pct.Fuga.e, d: pct.Fuga.d }
+      );
+
+      await interaction.channel.send({
+        content:
+          `📊 **Desempenho (porcentagens)**\n` +
+          `**Tiroteio:** ${pct.Tiroteio.v}% vitória • ${pct.Tiroteio.e}% empate • ${pct.Tiroteio.d}% derrota\n${urlTiro}\n\n` +
+          `**Fuga:** ${pct.Fuga.v}% vitória • ${pct.Fuga.e}% empate • ${pct.Fuga.d}% derrota\n${urlFuga}`
+      });
+
       // Confirmação privada
       await interaction.reply({
-        content: "✅ Ação registrada, planilha atualizada e resumo recalculado.",
+        content: "✅ Ação registrada, planilha atualizada, resumo recalculado e gráficos publicados no canal.",
         flags: MessageFlags.Ephemeral,
       });
     } catch (err) {
       console.error("Erro no /acao:", err);
-      await interaction.reply({
-        content: "❌ Ocorreu um erro ao registrar a ação. Verifique os logs.",
-        flags: MessageFlags.Ephemeral,
-      });
+      try {
+        await interaction.reply({
+          content: "❌ Ocorreu um erro ao registrar a ação. Verifique os logs.",
+          flags: MessageFlags.Ephemeral,
+        });
+      } catch {}
     }
   },
 };
