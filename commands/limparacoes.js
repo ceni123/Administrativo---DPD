@@ -1,60 +1,57 @@
-// commands/limparacoes.js — Limpa toda a planilha (somente o dono autorizado)
+// commands/limparacoes.js — Apaga o histórico da planilha com segurança (apenas 705943670897246228)
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
-const XLSX = require("xlsx");
 
-// ID autorizado (Felipe)
-const DONO_ID = "705943670897246228";
-
-// Diretório e arquivo
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const FILE_PATH = path.join(DATA_DIR, "acoes_dpd.xlsx");
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-}
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("limparacoes")
-    .setDescription("🧹 Limpa completamente a planilha de ações (somente autorizado)."),
+    .setDescription("Apaga todo o histórico da planilha de ações (apenas autorizado)."),
 
   async execute(interaction) {
     try {
-      // 🔒 Verifica se o usuário é o autorizado
-      if (interaction.user.id !== DONO_ID) {
+      // ✅ Permissão por ID único
+      const ALLOWED_ID = "705943670897246228";
+      if (interaction.user.id !== ALLOWED_ID) {
         return interaction.reply({
           content: "❌ Você não tem permissão para usar este comando.",
           flags: MessageFlags.Ephemeral,
         });
       }
 
-      ensureDataDir();
+      // Garante diretório
+      try { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); } catch {}
 
-      // Se a planilha existir, faz backup antes de limpar
+      // 📄 Remove o arquivo principal, se existir
       if (fs.existsSync(FILE_PATH)) {
-        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-        const backupPath = path.join(DATA_DIR, `acoes_dpd.backup-${stamp}.xlsx`);
-        fs.copyFileSync(FILE_PATH, backupPath);
+        fs.unlinkSync(FILE_PATH);
       }
 
-      // Cria uma nova planilha limpa
-      const wb = XLSX.utils.book_new();
-      XLSX.writeFile(wb, FILE_PATH);
+      // 🧹 (Opcional) Remove backups acoes_dpd.YYYY-MM-DD.bak.xlsx
+      try {
+        const entries = fs.readdirSync(DATA_DIR);
+        for (const name of entries) {
+          if (/^acoes_dpd\.\d{4}-\d{2}-\d{2}\.bak\.xlsx$/.test(name)) {
+            try { fs.unlinkSync(path.join(DATA_DIR, name)); } catch {}
+          }
+        }
+      } catch {}
 
       await interaction.reply({
-        content: "✅ Planilha **limpa com sucesso!** (backup automático gerado em `/data`).",
+        content: "🧹 Histórico apagado. O próximo `/acao` recriará a planilha automaticamente.",
         flags: MessageFlags.Ephemeral,
       });
-
-      console.log(`🧹 ${interaction.user.tag} limpou a planilha em ${new Date().toLocaleString("pt-BR")}`);
     } catch (err) {
       console.error("Erro no /limparacoes:", err);
-      await interaction.reply({
-        content: "❌ Ocorreu um erro ao limpar a planilha. Verifique os logs.",
-        flags: MessageFlags.Ephemeral,
-      });
+      try {
+        await interaction.reply({
+          content: "❌ Ocorreu um erro ao limpar o histórico.",
+          flags: MessageFlags.Ephemeral,
+        });
+      } catch {}
     }
   },
 };
