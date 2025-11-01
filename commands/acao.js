@@ -38,7 +38,6 @@ const FILE_PATH = path.join(__dirname, "../acoes_dpd.xlsx");
 
 /* ========= Helpers de planilha ========= */
 function applyColumnWidths(ws) {
-  // Larguras em 'caracteres' (wch) para cada coluna
   ws["!cols"] = [
     { wch: 12 }, // Data
     { wch: 28 }, // Autor (nome)
@@ -59,7 +58,6 @@ function ensureWorkbook() {
 }
 
 function ensureMonthSheet(workbook, dateStrBR) {
-  // extrai mês/ano da data BR (DD/MM/AAAA) — se falhar, usa mês atual
   let mesIndex, ano;
   const m = String(dateStrBR).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (m) {
@@ -87,7 +85,7 @@ function appendRow(workbook, sheetName, row) {
   const data = XLSX.utils.sheet_to_json(wsOld, { header: 1, defval: "" });
   data.push(row);
   const wsNew = XLSX.utils.aoa_to_sheet(data);
-  applyColumnWidths(wsNew); // garante largura após reescrita
+  applyColumnWidths(wsNew);
   workbook.Sheets[sheetName] = wsNew;
 }
 
@@ -106,7 +104,6 @@ function atualizarResumo(workbook) {
     }
   }
 
-  // ranking por oficiais citados
   const mapa = {}; // { nome: { presencas, vitorias, derrotas } }
   for (const ac of todas) {
     let nomes = String(ac.oficiais).split(/[,;]\s*/).filter(Boolean);
@@ -140,6 +137,41 @@ function atualizarResumo(workbook) {
   } else {
     XLSX.utils.book_append_sheet(workbook, resumoWS, "Resumo");
   }
+}
+
+/* ========= Util: substituir menções/IDs por apelidos ========= */
+async function oficiaisParaApelidos(texto, guild) {
+  if (!texto) return "";
+  let resultado = texto;
+
+  // 1) Coleta IDs em menções <@123> ou <@!123>
+  const idsMencoes = [...texto.matchAll(/<@!?(\d+)>/g)].map(m => m[1]);
+
+  // 2) Coleta IDs "soltos" (17-20 dígitos)
+  const idsSoltos = [...texto.matchAll(/\b(\d{17,20})\b/g)].map(m => m[1]);
+
+  const ids = Array.from(new Set([...idsMencoes, ...idsSoltos]));
+  const mapa = {};
+
+  for (const id of ids) {
+    let membro = guild.members.cache.get(id);
+    if (!membro) {
+      try { membro = await guild.members.fetch(id); } catch {}
+    }
+    if (membro) {
+      mapa[id] = membro.nickname || membro.displayName || membro.user?.username || id;
+    }
+  }
+
+  // Substitui menções completas por nome
+  for (const id of ids) {
+    if (!mapa[id]) continue;
+    resultado = resultado
+      .replace(new RegExp(`<@!?${id}>`, "g"), mapa[id])  // menções
+      .replace(new RegExp(`\\b${id}\\b`, "g"), mapa[id]); // ids soltos
+  }
+
+  return resultado;
 }
 
 /* ========= Opções de "Ação/Alvo" ========= */
@@ -212,24 +244,27 @@ module.exports = {
 
   async execute(interaction) {
     try {
-      // === Autor: salva NOME na planilha (displayName preferencial; fallback username) ===
+      // === Autor: salva NOME na planilha (apelido/displayName preferencial; fallback username) ===
       const autorUser = interaction.options.getUser("autor", true);
       const autorMember =
         interaction.guild.members.cache.get(autorUser.id) ||
         await interaction.guild.members.fetch(autorUser.id).catch(() => null);
-      const autorNome = autorMember?.displayName ?? autorUser.username; // <- Nome para planilha
-      const autorMencao = `<@${autorUser.id}>`; // <- Para embed no canal
+      const autorNome = autorMember?.nickname || autorMember?.displayName || autorUser.username; // Nome para planilha
+      const autorMencao = `<@${autorUser.id}>`; // Para embed no canal
 
       const resultado = interaction.options.getString("resultado", true);
       const tipo = interaction.options.getString("tipo", true);
       const acaoAlvo = interaction.options.getString("acao_alvo", true);
-      const oficiais = interaction.options.getString("oficiais", true);
+      const oficiaisInput = interaction.options.getString("oficiais", true);
       const boletim = interaction.options.getString("boletim", true);
       const dataIn = interaction.options.getString("data") || "";
       const dataBR = parseDataFlex(dataIn) || hojeBR();
       const timestamp = new Date().toLocaleString("pt-BR");
 
-      // ===== Embed público no canal =====
+      // Converte menções/IDs dos oficiais para apelidos antes de ir à planilha
+      const oficiaisNomes = await oficiaisParaApelidos(oficiaisInput, interaction.guild);
+
+      // ===== Embed público no canal (mantém menções) =====
       const color =
         resultado === "Vitória" ? "#00C853" :
         resultado === "Derrota" ? "#E53935" :
@@ -245,7 +280,7 @@ module.exports = {
           { name: "Ação", value: acaoAlvo, inline: true },
           { name: "Data", value: dataBR, inline: true },
           { name: "Boletim", value: `\`${boletim}\``, inline: true },
-          { name: "Oficiais Presentes", value: oficiais }
+          { name: "Oficiais Presentes", value: oficiaisInput } // mantém menções no canal
         )
         .setFooter({ text: `Registrado por ${interaction.user.tag}` })
         .setTimestamp();
@@ -256,16 +291,15 @@ module.exports = {
       const wb = ensureWorkbook();
       const sheetName = ensureMonthSheet(wb, dataBR);
 
-      // Grava NOME do autor (não o ID/menção) na planilha
       appendRow(wb, sheetName, [
-        dataBR,            // Data
-        autorNome,         // Autor (nome/apelido no servidor)
-        resultado,         // Resultado
-        tipo,              // Tipo
-        acaoAlvo,          // Ação
-        oficiais,          // Oficiais
-        boletim,           // Boletim
-        timestamp,         // Registrado em
+        dataBR,        // Data
+        autorNome,     // Autor (apelido/displayName)
+        resultado,     // Resultado
+        tipo,          // Tipo
+        acaoAlvo,      // Ação
+        oficiaisNomes, // Oficiais (convertidos para nomes)
+        boletim,       // Boletim
+        timestamp,     // Registrado em
       ]);
 
       atualizarResumo(wb);
@@ -273,7 +307,7 @@ module.exports = {
 
       // Confirmação privada
       await interaction.reply({
-        content: "✅ Ação registrada, planilha atualizada e resumo recalculado.",
+        content: "✅ Ação registrada, planilha atualizada (apelidos) e resumo recalculado.",
         flags: MessageFlags.Ephemeral,
       });
     } catch (err) {
