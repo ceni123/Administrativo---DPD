@@ -1,25 +1,25 @@
-// commands/acao.js — Registra ação, atualiza planilha e resumo (SEM gráficos) + persistência e backup
+// commands/acao.js — Registra ação, atualiza planilha e resumos (Tiroteio/Fuga) + persistência e backup
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 
 /* ========= Config de persistência ========= */
-// Use um volume persistente e aponte DATA_DIR para lá (ex.: /var/data, /opt/render/project/src/data, etc.)
+// Use um volume persistente e aponte DATA_DIR para lá (ex.: /var/data)
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
-const LEGACY_FILE_PATH = path.join(__dirname, "../acoes_dpd.xlsx");               // caminho antigo (dentro do código)
-const FILE_PATH = path.join(DATA_DIR, "acoes_dpd.xlsx");                          // caminho novo (persistente)
+const LEGACY_FILE_PATH = path.join(__dirname, "../acoes_dpd.xlsx");     // antigo (no código)
+const FILE_PATH = path.join(DATA_DIR, "acoes_dpd.xlsx");                // novo (persistente)
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  // Migra automaticamente o arquivo legado (se existir) para o diretório persistente
+  // migra automaticamente o arquivo legado (se existir) para o diretório persistente
   if (fs.existsSync(LEGACY_FILE_PATH) && !fs.existsSync(FILE_PATH)) {
     try { fs.copyFileSync(LEGACY_FILE_PATH, FILE_PATH); } catch (e) { console.warn("⚠️ Falha ao migrar XLSX legado:", e); }
   }
 }
 
 function safeWriteFile(workbook) {
-  // Backup diário antes de gravar
+  // backup diário antes de gravar
   const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const backupPath = path.join(DATA_DIR, `acoes_dpd.${stamp}.bak.xlsx`);
   try {
@@ -116,10 +116,11 @@ function appendRow(workbook, sheetName, row) {
   workbook.Sheets[sheetName] = wsNew;
 }
 
-function atualizarResumo(workbook) {
+/* ========= Leitura das ações ========= */
+function coletarTodasAcoes(workbook) {
   const todas = [];
   for (const name of workbook.SheetNames) {
-    if (name === "Resumo") continue;
+    if (name.startsWith("Resumo")) continue;
     const ws = workbook.Sheets[name];
     if (!ws) continue;
     const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
@@ -130,43 +131,64 @@ function atualizarResumo(workbook) {
       todas.push({ data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm });
     }
   }
+  return todas;
+}
 
-  const mapa = {}; // { nome: { presencas, vitorias, derrotas } }
+/* ========= Split robusto dos nomes de oficiais =========
+   - Como a coluna "Oficiais" já é salva em texto (apelidos), aqui só separamos.
+   - Suporta vírgula, ponto-e-vírgula, barra, pipe, ponto-meio, e também quebra em múltiplos espaços.
+*/
+function splitOficiaisCampo(txt) {
+  return String(txt ?? "")
+    .split(/[,;|/•]+|\s{2,}/g)   // separadores: , ; | / •  ou 2+ espaços
+    .map(t => t.trim())
+    .filter(Boolean);
+}
+
+/* ========= Resumos por tipo (duas abas) ========= */
+function atualizarResumosPorTipo(workbook) {
+  const todas = coletarTodasAcoes(workbook);
+
+  const mapas = {
+    "Tiroteio": Object.create(null),
+    "Fuga": Object.create(null),
+  };
+
   for (const ac of todas) {
-    let nomes = String(ac.oficiais).split(/[,;]\s*/).filter(Boolean);
-    if (nomes.length === 0) {
-      const fallback = String(ac.oficiais).split(/\s+/).filter(Boolean);
-      if (fallback.length) nomes = fallback;
-    }
+    const tipo = String(ac.tipo || "");
+    const alvo = tipo.includes("Tiro") ? "Tiroteio" : (tipo.includes("Fuga") ? "Fuga" : null);
+    if (!alvo) continue;
 
-    for (let nome of nomes) {
-      nome = nome.trim();
-      if (!nome) continue;
-      if (!mapa[nome]) mapa[nome] = { presencas: 0, vitorias: 0, derrotas: 0 };
-      mapa[nome].presencas++;
-      const r = String(ac.resultado).toLowerCase();
-      if (r.includes("vit")) mapa[nome].vitorias++;
-      if (r.includes("der")) mapa[nome].derrotas++;
+    const nomes = splitOficiaisCampo(ac.oficiais);
+    const r = String(ac.resultado).toLowerCase();
+    const v = r.includes("vit");
+    const d = r.includes("der");
+
+    for (const nome of nomes) {
+      if (!mapas[alvo][nome]) mapas[alvo][nome] = { presencas: 0, vitorias: 0, derrotas: 0 };
+      mapas[alvo][nome].presencas++;
+      if (v) mapas[alvo][nome].vitorias++;
+      if (d) mapas[alvo][nome].derrotas++;
     }
   }
 
-  const rows = [["Oficial", "Presenças", "Vitórias", "Derrotas"]];
-  Object.entries(mapa)
-    .sort((a, b) => b[1].presencas - a[1].presencas || b[1].vitorias - a[1].vitorias)
-    .forEach(([nome, stats]) => {
-      rows.push([nome, stats.presencas, stats.vitorias, stats.derrotas]);
-    });
+  for (const tipo of ["Tiroteio", "Fuga"]) {
+    const mapa = mapas[tipo];
+    const rows = [["Oficial", "Presenças", "Vitórias", "Derrotas"]];
+    Object.entries(mapa)
+      .sort((a, b) => b[1].presencas - a[1].presencas || b[1].vitorias - a[1].vitorias || a[0].localeCompare(b[0]))
+      .forEach(([nome, stats]) => rows.push([nome, stats.presencas, stats.vitorias, stats.derrotas]));
 
-  const resumoWS = XLSX.utils.aoa_to_sheet(rows);
-  resumoWS["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
-  if (workbook.SheetNames.includes("Resumo")) {
-    workbook.Sheets["Resumo"] = resumoWS;
-  } else {
-    XLSX.utils.book_append_sheet(workbook, resumoWS, "Resumo");
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{ wch: 36 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+
+    const sheetName = `Resumo - ${tipo}`;
+    if (workbook.SheetNames.includes(sheetName)) workbook.Sheets[sheetName] = ws;
+    else XLSX.utils.book_append_sheet(workbook, ws, sheetName);
   }
 }
 
-/* ========= Util: substituir menções/IDs por apelidos ========= */
+/* ========= Util: substituir menções/IDs por apelidos antes de salvar ========= */
 async function oficiaisParaApelidos(texto, guild) {
   if (!texto) return "";
   let resultado = texto;
@@ -216,54 +238,37 @@ module.exports = {
     .setName("acao")
     .setDescription("Registra ação policial (resultado, tipo, alvo, oficiais, data, boletim) + planilha.")
     .addUserOption(o =>
-      o.setName("autor")
-        .setDescription("Quem está registrando a ação (mencione com @)")
-        .setRequired(true)
+      o.setName("autor").setDescription("Quem está registrando a ação (mencione com @)").setRequired(true)
     )
     .addStringOption(o =>
-      o.setName("resultado")
-        .setDescription("Resultado da ação")
-        .setRequired(true)
-        .addChoices(
-          { name: "Vitória 🟢", value: "Vitória" },
-          { name: "Derrota 🔴", value: "Derrota" },
-          { name: "Empate 🟡", value: "Empate" }
-        )
+      o.setName("resultado").setDescription("Resultado da ação").setRequired(true).addChoices(
+        { name: "Vitória 🟢", value: "Vitória" },
+        { name: "Derrota 🔴", value: "Derrota" },
+        { name: "Empate 🟡", value: "Empate" }
+      )
     )
     .addStringOption(o =>
-      o.setName("tipo")
-        .setDescription("Tipo da ação")
-        .setRequired(true)
-        .addChoices(
-          { name: "Fuga 🚔", value: "Fuga" },
-          { name: "Tiroteio 🔫", value: "Tiroteio" }
-        )
+      o.setName("tipo").setDescription("Tipo da ação").setRequired(true).addChoices(
+        { name: "Fuga 🚔", value: "Fuga" },
+        { name: "Tiroteio 🔫", value: "Tiroteio" }
+      )
     )
     .addStringOption(o =>
-      o.setName("acao_alvo")
-        .setDescription("Qual foi a Ação/Alvo")
-        .setRequired(true)
-        .addChoices(...ACAO_CHOICES)
+      o.setName("acao_alvo").setDescription("Qual foi a Ação/Alvo").setRequired(true).addChoices(...ACAO_CHOICES)
     )
     .addStringOption(o =>
-      o.setName("oficiais")
-        .setDescription("Oficiais presentes (use @menções ou nomes, separados por espaço/vírgula)")
-        .setRequired(true)
+      o.setName("oficiais").setDescription("Oficiais presentes (use @menções ou nomes, separados por vírgula)").setRequired(true)
     )
     .addStringOption(o =>
-      o.setName("boletim")
-        .setDescription("Número do boletim da prisão")
-        .setRequired(true)
+      o.setName("boletim").setDescription("Número do boletim da prisão").setRequired(true)
     )
     .addStringOption(o =>
-      o.setName("data")
-        .setDescription("Data da ação (DD/MM/AAAA, DD-MM-AAAA ou AAAA-MM-DD). Vazio = hoje.")
-        .setRequired(false)
+      o.setName("data").setDescription("Data da ação (DD/MM/AAAA, DD-MM-AAAA ou AAAA-MM-DD). Vazio = hoje.").setRequired(false)
     ),
 
   async execute(interaction) {
     try {
-      // === Autor: salva NOME na planilha (apelido/displayName preferencial; fallback username) ===
+      // Autor: salva NOME (apelido/displayName preferencial; fallback username)
       const autorUser = interaction.options.getUser("autor", true);
       const autorMember =
         interaction.guild.members.cache.get(autorUser.id) ||
@@ -283,12 +288,8 @@ module.exports = {
       // Converte menções/IDs dos oficiais para apelidos antes de ir à planilha
       const oficiaisNomes = await oficiaisParaApelidos(oficiaisInput, interaction.guild);
 
-      // ===== Embed público no canal (mantém menções) =====
-      const color =
-        resultado === "Vitória" ? "#00C853" :
-        resultado === "Derrota" ? "#E53935" :
-        "#FBC02D";
-
+      // Embed público no canal (mantém menções)
+      const color = resultado === "Vitória" ? "#00C853" : (resultado === "Derrota" ? "#E53935" : "#FBC02D");
       const embed = new EmbedBuilder()
         .setColor(color)
         .setTitle("📋 Relatório de Ação Policial")
@@ -306,7 +307,7 @@ module.exports = {
 
       await interaction.channel.send({ embeds: [embed] });
 
-      // ===== Planilha (mensal + resumo) =====
+      // Planilha (mensal) + resumos
       const wb = ensureWorkbook();
       const sheetName = ensureMonthSheet(wb, dataBR);
 
@@ -316,16 +317,19 @@ module.exports = {
         resultado,     // Resultado
         tipo,          // Tipo
         acaoAlvo,      // Ação
-        oficiaisNomes, // Oficiais (convertidos para nomes)
+        oficiaisNomes, // Oficiais (apelidos)
         boletim,       // Boletim
         timestamp,     // Registrado em
       ]);
 
-      atualizarResumo(wb);
-      safeWriteFile(wb); // grava com backup diário no diretório persistente
+      // Recalcula os dois resumos
+      atualizarResumosPorTipo(wb);
+
+      // Grava com backup diário no diretório persistente
+      safeWriteFile(wb);
 
       await interaction.reply({
-        content: "✅ Ação registrada, planilha atualizada (apelidos) e resumo recalculado.",
+        content: "✅ Ação registrada, planilha atualizada e resumos separados (Tiroteio/Fuga) recalculados.",
         flags: MessageFlags.Ephemeral,
       });
     } catch (err) {
