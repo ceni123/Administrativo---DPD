@@ -1,4 +1,5 @@
-// index.js — BOT DPD COMPLETO (Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores + Verificar Roles + Limpeza de Comandos Duplicados)
+// index.js — BOT DPD COMPLETO (v1.1 — Atualização com comando /ação)
+// Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log + Registro em 2 Servidores + Verificar Roles + Ação + Limpeza de Comandos Duplicados
 
 const {
   Client,
@@ -34,7 +35,7 @@ const denuncia = require("./commands/denuncia.js");
 const arquivar = require("./commands/arquivar.js");
 const intimar = require("./commands/intimar.js");
 const verificar_roles = require("./commands/verificar_roles.js");
-const acao = require("./commands/acao.js"); // 🆕 /ação
+const acao = require("./commands/acao.js"); // 🆕 Novo comando /ação
 
 client.commands.set(hierarquia.data.name, hierarquia);
 client.commands.set(anonimo.data.name, anonimo);
@@ -43,7 +44,7 @@ client.commands.set(denuncia.data.name, denuncia);
 client.commands.set(arquivar.data.name, arquivar);
 client.commands.set(intimar.data.name, intimar);
 client.commands.set(verificar_roles.data.name, verificar_roles);
-client.commands.set(acao.data.name, acao); // 🆕 registra /ação
+client.commands.set(acao.data.name, acao); // ✅ Registra /ação
 
 // ======= 3) REGISTRO DE COMANDOS (E LIMPEZA GLOBAL) =======
 client.once(Events.ClientReady, async (c) => {
@@ -51,7 +52,7 @@ client.once(Events.ClientReady, async (c) => {
 
   const rest = new REST({ version: "10" }).setToken(process.env.BOT_TOKEN);
 
-  // 🔥 Limpa comandos globais antigos (para remover duplicações)
+  // 🔥 Limpa comandos globais antigos (para evitar duplicações)
   try {
     await rest.put(Routes.applicationCommands(process.env.APP_ID), { body: [] });
     console.log("🧹 Comandos globais antigos removidos com sucesso!");
@@ -68,7 +69,7 @@ client.once(Events.ClientReady, async (c) => {
     arquivar.data.toJSON(),
     intimar.data.toJSON(),
     verificar_roles.data.toJSON(),
-    acao.data.toJSON(), // 🆕 inclui /ação
+    acao.data.toJSON(), // 🆕 Inclui /ação
   ];
 
   const servidores = [
@@ -204,7 +205,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             PermissionFlagsBits.ReadMessageHistory,
           ],
         },
-        // ✅ Council (opcional) — remova este bloco se quiser exclusivo da I.N.V.
+        // ✅ Council (opcional)
         {
           id: councilRoleId,
           allow: [
