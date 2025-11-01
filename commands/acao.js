@@ -188,7 +188,7 @@ module.exports = {
       )
     )
     .addStringOption(o => o.setName("acao_alvo").setDescription("Ação/Alvo").setRequired(true).addChoices(...ACAO_CHOICES))
-    // 🆕 Até 10 usuários selecionáveis no picker do Discord
+    // 🆕 Até 10 usuários selecionáveis no picker do Discord + fallback em texto
     .addUserOption(o => o.setName("oficial_1").setDescription("Oficial 1").setRequired(false))
     .addUserOption(o => o.setName("oficial_2").setDescription("Oficial 2").setRequired(false))
     .addUserOption(o => o.setName("oficial_3").setDescription("Oficial 3").setRequired(false))
@@ -199,8 +199,7 @@ module.exports = {
     .addUserOption(o => o.setName("oficial_8").setDescription("Oficial 8").setRequired(false))
     .addUserOption(o => o.setName("oficial_9").setDescription("Oficial 9").setRequired(false))
     .addUserOption(o => o.setName("oficial_10").setDescription("Oficial 10").setRequired(false))
-    // Fallback em texto (menções/IDs/nomes), se preferir
-    .addStringOption(o => o.setName("oficiais").setDescription("Oficiais (texto livre)").setRequired(false))
+    .addStringOption(o => o.setName("oficiais").setDescription("Oficiais (texto livre: menções/IDs/nomes)").setRequired(false))
     .addStringOption(o => o.setName("boletim").setDescription("Número do boletim").setRequired(true))
     .addStringOption(o => o.setName("data").setDescription("Data (DD/MM/AAAA ou AAAA-MM-DD)").setRequired(false)),
 
@@ -230,7 +229,7 @@ module.exports = {
       }
       const oficiaisTexto = interaction.options.getString("oficiais") || "";
 
-      // Para o EMBED: mostrar menções dos selecionados + o que vier no texto
+      // Para o EMBED: menções dos selecionados + o que vier no texto
       const mencoesSelecionados = oficiaisSelecionados.map(u => `<@${u.id}>`);
       const embedOficiaisValue =
         [ ...mencoesSelecionados, oficiaisTexto ].filter(Boolean).join(", ").trim() || "—";
@@ -273,14 +272,14 @@ module.exports = {
       const sheetName = ensureMonthSheet(wb, dataBR);
 
       appendRow(wb, sheetName, [
-        dataBR,            // Data
-        autorNome,         // Autor
-        resultado,         // Resultado
-        tipo,              // Tipo
-        acaoAlvo,          // Ação
+        dataBR,                   // Data
+        autorNome,                // Autor
+        resultado,                // Resultado
+        tipo,                     // Tipo
+        acaoAlvo,                 // Ação
         oficiaisParaPlanilha || "—", // Oficiais (nomes)
-        boletim,           // Boletim
-        timestamp,         // Registrado em
+        boletim,                  // Boletim
+        timestamp,                // Registrado em
       ]);
 
       atualizarResumosPorTipo(wb);
