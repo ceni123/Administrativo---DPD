@@ -1,4 +1,4 @@
-// commands/acao.js — Registra ação, atualiza planilha e resumos (Tiroteio/Fuga) + persistência e backup + DESCRIÇÃO
+// commands/acao.js — Registra ação, atualiza planilha e resumos (Tiroteio/Fuga) + persistência, backup e DESCRIÇÃO
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
@@ -48,7 +48,7 @@ const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Ag
 function applyColumnWidths(ws) {
   ws["!cols"] = [
     { wch: 12 }, // Data
-    { wch: 28 }, // Autor (nome)
+    { wch: 28 }, // Autor
     { wch: 12 }, // Resultado
     { wch: 12 }, // Tipo
     { wch: 24 }, // Ação
@@ -95,7 +95,7 @@ function coletarTodasAcoes(workbook) {
     const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
     for (let i = 1; i < linhas.length; i++) {
       const l = linhas[i];
-      if (!l || l.length < 9) continue; // agora são 9 colunas
+      if (!l || l.length < 9) continue; // 9 colunas com descrição
       const [data, autor, resultado, tipo, acaoAlvo, descricao, oficiais, boletim, registradoEm] = l;
       todas.push({ data, autor, resultado, tipo, acaoAlvo, descricao, oficiais, boletim, registradoEm });
     }
@@ -197,13 +197,11 @@ module.exports = {
       )
     )
     .addStringOption(o => o.setName("acao_alvo").setDescription("Ação/Alvo").setRequired(true).addChoices(...ACAO_CHOICES))
-    // 🆕 DESCRIÇÃO (obrigatória)
     .addStringOption(o =>
       o.setName("descricao")
         .setDescription("Descreva brevemente a ocorrência")
         .setRequired(true)
     )
-    // Usuários selecionáveis no picker + fallback em texto
     .addUserOption(o => o.setName("oficial_1").setDescription("Oficial 1").setRequired(false))
     .addUserOption(o => o.setName("oficial_2").setDescription("Oficial 2").setRequired(false))
     .addUserOption(o => o.setName("oficial_3").setDescription("Oficial 3").setRequired(false))
@@ -231,7 +229,17 @@ module.exports = {
       const resultado = interaction.options.getString("resultado", true);
       const tipo      = interaction.options.getString("tipo", true);
       const acaoAlvo  = interaction.options.getString("acao_alvo", true);
-      const descricao = interaction.options.getString("descricao", true);
+
+      // Guard para transição de schema (evita crash se o Discord ainda não trouxe a opção nova)
+      const descricao = interaction.options.getString("descricao") || "";
+      if (!descricao.trim()) {
+        await interaction.reply({
+          content: "⚠️ O campo **descrição** é obrigatório.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
       const boletim   = interaction.options.getString("boletim", true);
       const dataIn    = interaction.options.getString("data") || "";
       const dataBR    = parseDataFlex(dataIn) || hojeBR();
@@ -277,7 +285,7 @@ module.exports = {
           { name: "Ação", value: acaoAlvo, inline: true },
           { name: "Data", value: dataBR, inline: true },
           { name: "Boletim", value: `\`${boletim}\``, inline: true },
-          { name: "Descrição", value: descricaoEmbed },                       // 🆕
+          { name: "Descrição", value: descricaoEmbed },
           { name: "Oficiais Presentes", value: embedOficiaisValue }
         )
         .setFooter({ text: `Registrado por ${interaction.user.tag}` })
@@ -290,15 +298,15 @@ module.exports = {
       const sheetName = ensureMonthSheet(wb, dataBR);
 
       appendRow(wb, sheetName, [
-        dataBR,                    // Data
-        autorNome,                 // Autor
-        resultado,                 // Resultado
-        tipo,                      // Tipo
-        acaoAlvo,                  // Ação
-        descricao,                 // Descrição (completa)
+        dataBR,                      // Data
+        autorNome,                   // Autor
+        resultado,                   // Resultado
+        tipo,                        // Tipo
+        acaoAlvo,                    // Ação
+        descricao,                   // Descrição (completa)
         oficiaisParaPlanilha || "—", // Oficiais (nomes)
-        boletim,                   // Boletim
-        timestamp,                 // Registrado em
+        boletim,                     // Boletim
+        timestamp,                   // Registrado em
       ]);
 
       atualizarResumosPorTipo(wb);
