@@ -1,4 +1,4 @@
-// commands/acao.js — Registra ação, atualiza planilha e resumos (Tiroteio/Fuga) + persistência e backup
+// commands/acao.js — Registra ação, atualiza planilha e resumos (Tiroteio/Fuga) + persistência e backup + DESCRIÇÃO
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
@@ -47,8 +47,15 @@ const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Ag
 /* ========= Planilha ========= */
 function applyColumnWidths(ws) {
   ws["!cols"] = [
-    { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 12 },
-    { wch: 24 }, { wch: 40 }, { wch: 18 }, { wch: 22 },
+    { wch: 12 }, // Data
+    { wch: 28 }, // Autor (nome)
+    { wch: 12 }, // Resultado
+    { wch: 12 }, // Tipo
+    { wch: 24 }, // Ação
+    { wch: 50 }, // Descrição
+    { wch: 40 }, // Oficiais
+    { wch: 18 }, // Boletim
+    { wch: 22 }, // Registrado em
   ];
 }
 function ensureWorkbook() {
@@ -63,7 +70,9 @@ function ensureMonthSheet(workbook, dateStrBR) {
   else { const now = new Date(); mesIndex = now.getMonth(); ano = now.getFullYear(); }
   const sheetName = `${MESES[mesIndex]} ${ano}`;
   if (!workbook.SheetNames.includes(sheetName)) {
-    const ws = XLSX.utils.aoa_to_sheet([["Data","Autor","Resultado","Tipo","Ação","Oficiais","Boletim","Registrado em"]]);
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["Data","Autor","Resultado","Tipo","Ação","Descrição","Oficiais","Boletim","Registrado em"]
+    ]);
     applyColumnWidths(ws);
     XLSX.utils.book_append_sheet(workbook, ws, sheetName);
   }
@@ -86,9 +95,9 @@ function coletarTodasAcoes(workbook) {
     const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
     for (let i = 1; i < linhas.length; i++) {
       const l = linhas[i];
-      if (!l || l.length < 8) continue;
-      const [data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm] = l;
-      todas.push({ data, autor, resultado, tipo, acaoAlvo, oficiais, boletim, registradoEm });
+      if (!l || l.length < 9) continue; // agora são 9 colunas
+      const [data, autor, resultado, tipo, acaoAlvo, descricao, oficiais, boletim, registradoEm] = l;
+      todas.push({ data, autor, resultado, tipo, acaoAlvo, descricao, oficiais, boletim, registradoEm });
     }
   }
   return todas;
@@ -172,7 +181,7 @@ const ACAO_CHOICES = [
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao")
-    .setDescription("Registra ação policial (resultado, tipo, alvo, oficiais, data, boletim) + planilha.")
+    .setDescription("Registra ação policial (resultado, tipo, alvo, descrição, oficiais, data, boletim) + planilha.")
     .addUserOption(o => o.setName("autor").setDescription("Quem está registrando a ação").setRequired(true))
     .addStringOption(o =>
       o.setName("resultado").setDescription("Resultado").setRequired(true).addChoices(
@@ -188,7 +197,13 @@ module.exports = {
       )
     )
     .addStringOption(o => o.setName("acao_alvo").setDescription("Ação/Alvo").setRequired(true).addChoices(...ACAO_CHOICES))
-    // 🆕 Até 10 usuários selecionáveis no picker do Discord + fallback em texto
+    // 🆕 DESCRIÇÃO (obrigatória)
+    .addStringOption(o =>
+      o.setName("descricao")
+        .setDescription("Descreva brevemente a ocorrência")
+        .setRequired(true)
+    )
+    // Usuários selecionáveis no picker + fallback em texto
     .addUserOption(o => o.setName("oficial_1").setDescription("Oficial 1").setRequired(false))
     .addUserOption(o => o.setName("oficial_2").setDescription("Oficial 2").setRequired(false))
     .addUserOption(o => o.setName("oficial_3").setDescription("Oficial 3").setRequired(false))
@@ -216,6 +231,7 @@ module.exports = {
       const resultado = interaction.options.getString("resultado", true);
       const tipo      = interaction.options.getString("tipo", true);
       const acaoAlvo  = interaction.options.getString("acao_alvo", true);
+      const descricao = interaction.options.getString("descricao", true);
       const boletim   = interaction.options.getString("boletim", true);
       const dataIn    = interaction.options.getString("data") || "";
       const dataBR    = parseDataFlex(dataIn) || hojeBR();
@@ -229,12 +245,13 @@ module.exports = {
       }
       const oficiaisTexto = interaction.options.getString("oficiais") || "";
 
-      // Para o EMBED: menções dos selecionados + o que vier no texto
+      // Para o EMBED
       const mencoesSelecionados = oficiaisSelecionados.map(u => `<@${u.id}>`);
       const embedOficiaisValue =
         [ ...mencoesSelecionados, oficiaisTexto ].filter(Boolean).join(", ").trim() || "—";
+      const descricaoEmbed = String(descricao).slice(0, 1024) || "—";
 
-      // Para a PLANILHA: nomes (apelidos) dos selecionados + conversão do texto para apelidos
+      // Para a PLANILHA
       const nomesSelecionados = [];
       for (const u of oficiaisSelecionados) {
         const m =
@@ -260,6 +277,7 @@ module.exports = {
           { name: "Ação", value: acaoAlvo, inline: true },
           { name: "Data", value: dataBR, inline: true },
           { name: "Boletim", value: `\`${boletim}\``, inline: true },
+          { name: "Descrição", value: descricaoEmbed },                       // 🆕
           { name: "Oficiais Presentes", value: embedOficiaisValue }
         )
         .setFooter({ text: `Registrado por ${interaction.user.tag}` })
@@ -272,14 +290,15 @@ module.exports = {
       const sheetName = ensureMonthSheet(wb, dataBR);
 
       appendRow(wb, sheetName, [
-        dataBR,                   // Data
-        autorNome,                // Autor
-        resultado,                // Resultado
-        tipo,                     // Tipo
-        acaoAlvo,                 // Ação
+        dataBR,                    // Data
+        autorNome,                 // Autor
+        resultado,                 // Resultado
+        tipo,                      // Tipo
+        acaoAlvo,                  // Ação
+        descricao,                 // Descrição (completa)
         oficiaisParaPlanilha || "—", // Oficiais (nomes)
-        boletim,                  // Boletim
-        timestamp,                // Registrado em
+        boletim,                   // Boletim
+        timestamp,                 // Registrado em
       ]);
 
       atualizarResumosPorTipo(wb);
