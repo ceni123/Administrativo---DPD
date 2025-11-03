@@ -1,7 +1,7 @@
-// index.js — BOT DPD COMPLETO (v1.4 — + /planilha + /grafico + /limparacoes)
-// Hierarquia Automática + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log
-// + Registro em 2 Servidores + Verificar Roles + Ação + Planilha + Gráfico + Limpar Ações
-// + Limpeza de Comandos Duplicados
+// index.js — BOT DPD COMPLETO (v1.4.1)
+// Hierarquia + Anônimo + Mensagem + Denúncia + Arquivar + Intimar + Log
+// + Registro por guild + Verificar Roles + Ação + Planilha + Gráfico + Limpar Ações
+// + Limpeza de comandos globais legados
 
 const {
   Client,
@@ -37,56 +37,52 @@ const denuncia = require("./commands/denuncia.js");
 const arquivar = require("./commands/arquivar.js");
 const intimar = require("./commands/intimar.js");
 const verificar_roles = require("./commands/verificar_roles.js");
-const acao = require("./commands/acao.js");         // /acao
-const planilha = require("./commands/planilha.js"); // /planilha
-const grafico = require("./commands/grafico.js");   // /grafico
-const limparacoes = require("./commands/limparacoes.js"); // 🧹 /limparacoes
+const acao = require("./commands/acao.js");
+const planilha = require("./commands/planilha.js");
+const grafico = require("./commands/grafico.js");
+const limparacoes = require("./commands/limparacoes.js");
 
-client.commands.set(hierarquia.data.name, hierarquia);
-client.commands.set(anonimo.data.name, anonimo);
-client.commands.set(mensagem.data.name, mensagem);
-client.commands.set(denuncia.data.name, denuncia);
-client.commands.set(arquivar.data.name, arquivar);
-client.commands.set(intimar.data.name, intimar);
-client.commands.set(verificar_roles.data.name, verificar_roles);
-client.commands.set(acao.data.name, acao);
-client.commands.set(planilha.data.name, planilha);
-client.commands.set(grafico.data.name, grafico);
-client.commands.set(limparacoes.data.name, limparacoes); // 🆕
+[
+  hierarquia,
+  anonimo,
+  mensagem,
+  denuncia,
+  arquivar,
+  intimar,
+  verificar_roles,
+  acao,
+  planilha,
+  grafico,
+  limparacoes,
+].forEach((cmd) => {
+  if (cmd?.data?.name) client.commands.set(cmd.data.name, cmd);
+});
 
-// ======= 3) REGISTRO DE COMANDOS (E LIMPEZA GLOBAL) =======
+// ======= 3) REGISTRO DE COMANDOS =======
 client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot conectado como ${c.user.tag}`);
 
   const rest = new REST({ version: "10" }).setToken(process.env.BOT_TOKEN);
 
-  // 🔥 Limpa comandos globais antigos (para evitar duplicações)
+  // Limpa comandos globais antigos (evita duplicação quando você usa registro por guild)
   try {
     await rest.put(Routes.applicationCommands(process.env.APP_ID), { body: [] });
     console.log("🧹 Comandos globais antigos removidos com sucesso!");
   } catch (err) {
-    console.error("❌ Erro ao limpar comandos globais:", err);
+    console.error("❌ Erro ao limpar comandos globais:", err?.message || err);
   }
 
-  // 💾 Registra comandos apenas nas guilds autorizadas
-  const commandsJson = [
-    hierarquia.data.toJSON(),
-    anonimo.data.toJSON(),
-    mensagem.data.toJSON(),
-    denuncia.data.toJSON(),
-    arquivar.data.toJSON(),
-    intimar.data.toJSON(),
-    verificar_roles.data.toJSON(),
-    acao.data.toJSON(),
-    planilha.data.toJSON(),
-    grafico.data.toJSON(),
-    limparacoes.data.toJSON(), // 🆕 inclui /limparacoes
-  ];
+  // Monta o JSON dos comandos automaticamente
+  const commandsJson = Array.from(client.commands.values())
+    .map((c) => c.data?.toJSON?.())
+    .filter(Boolean);
 
-  const servidores = [
-    process.env.GUILD_ID_1, // Servidor principal (DPD)
-    process.env.GUILD_ID_2, // Servidor de testes
-  ];
+  const servidores = [process.env.GUILD_ID_1, process.env.GUILD_ID_2].filter(Boolean);
+
+  if (servidores.length === 0) {
+    console.warn("⚠️ Nenhuma GUILD_ID_* definida. Defina GUILD_ID_1/GUILD_ID_2 nas variáveis de ambiente.");
+    return;
+  }
 
   try {
     for (const guildId of servidores) {
@@ -94,17 +90,17 @@ client.once(Events.ClientReady, async (c) => {
         Routes.applicationGuildCommands(process.env.APP_ID, guildId),
         { body: commandsJson }
       );
-      console.log(`✅ Comandos registrados no servidor: ${guildId}`);
+      console.log(`✅ Comandos (${commandsJson.length}) registrados no servidor: ${guildId}`);
     }
-    console.log("⚙️ Comandos registrados com sucesso nas guilds definidas!");
+    console.log("⚙️ Registro concluído nas guilds definidas!");
   } catch (err) {
-    console.error("❌ Erro ao registrar comandos nas guilds:", err);
+    console.error("❌ Erro ao registrar comandos nas guilds:", err?.message || err);
   }
 });
 
 // ======= 4) INTERAÇÕES =======
 client.on(Events.InteractionCreate, async (interaction) => {
-  // ===== SLASH COMMANDS =====
+  // Slash commands
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -112,11 +108,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     try {
       await command.execute(interaction);
 
-      // ===== LOG AUTOMÁTICO =====
+      // Log automático
       const logChannel = interaction.guild.channels.cache.find(
         (c) =>
-          c.name.toLowerCase().includes("log-botdpd") &&
-          c.type === ChannelType.GuildText
+          c.type === ChannelType.GuildText &&
+          c.name.toLowerCase().includes("log-botdpd")
       );
 
       if (logChannel) {
@@ -126,7 +122,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setDescription(
             `**Usuário:** ${interaction.user} | ${interaction.user.tag}\n` +
             `**Comando:** \`/${interaction.commandName}\`\n` +
-            `**Ação:** ✅ Comando executado com sucesso.\n` +
+            `**Ação:** ✅ Executado com sucesso\n` +
             `**Canal:** ${interaction.channel}`
           )
           .setFooter({ text: "Departamento de Polícia de Detroit" })
@@ -138,52 +134,36 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     } catch (err) {
       console.error("❌ Erro ao executar comando:", err);
-      if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({
-          content: "❌ Erro ao executar o comando.",
-          flags: MessageFlags.Ephemeral,
-        });
-      } else {
-        await interaction.reply({
-          content: "❌ Erro ao executar o comando.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
+      const payload = { content: "❌ Erro ao executar o comando.", flags: MessageFlags.Ephemeral };
+      if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
+      else await interaction.reply(payload);
     }
     return;
   }
 
-  // ===== SELECT MENU DE HIERARQUIA =====
+  // Select menu de hierarquia
   if (interaction.isStringSelectMenu() && interaction.customId === "unidade_select") {
     await interaction.deferUpdate();
     const unidade = interaction.values[0];
     const embed = await hierarquia.gerarHierarquiaEmbed(interaction.guild, unidade);
-
-    if (!embed) {
-      await interaction.channel.send("❌ Unidade não encontrada.");
-      return;
-    }
-
+    if (!embed) return interaction.channel.send("❌ Unidade não encontrada.");
     await interaction.channel.send({ embeds: [embed] });
   }
 
-  // ===== BOTÃO DE DENÚNCIA =====
+  // Botão de denúncia
   if (interaction.isButton() && interaction.customId === "abrir_denuncia") {
-    // ✅ Categoria fixa por ID
     const categoriaId = "1345458805449818112";
     const categoria = interaction.guild.channels.cache.get(categoriaId);
 
     if (!categoria) {
-      await interaction.reply({
+      return interaction.reply({
         content: "❌ Categoria de denúncias não encontrada no servidor (verifique o ID).",
         flags: MessageFlags.Ephemeral,
       });
-      return;
     }
 
-    // ✅ Cargos que devem ver e falar no ticket
     const invRoleId = "1238253951535681536";     // Internal Investigation ⚖️
-    const councilRoleId = "1222682312035143710"; // Council 💠 (opcional; remova se quiser só I.N.V.)
+    const councilRoleId = "1222682312035143710"; // Council 💠 (opcional)
 
     const randomId = Math.floor(Math.random() * 100000);
 
@@ -193,12 +173,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       parent: categoria.id,
       topic: `Denúncia aberta por ${interaction.user.tag}`,
       permissionOverwrites: [
-        // Bloqueia todos
-        {
-          id: interaction.guild.roles.everyone,
-          deny: [PermissionFlagsBits.ViewChannel],
-        },
-        // Autor da denúncia
+        { id: interaction.guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
         {
           id: interaction.user.id,
           allow: [
@@ -207,7 +182,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             PermissionFlagsBits.ReadMessageHistory,
           ],
         },
-        // ✅ Internal Investigation: ver e conversar
         {
           id: invRoleId,
           allow: [
@@ -216,7 +190,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
             PermissionFlagsBits.ReadMessageHistory,
           ],
         },
-        // ✅ Council (opcional)
         {
           id: councilRoleId,
           allow: [
