@@ -104,30 +104,38 @@ function coletarTodasAcoes(workbook) {
   }
   return todas;
 }
+
+/** ========= Split de oficiais usado nos RESUMOS (agora considera \n) */
 function splitOficiaisCampo(txt) {
   return String(txt ?? "")
-    .split(/[,;|/•]+|\s{2,}/g)
+    .split(/[,\n;]+/g)     // <- vírgula, quebra de linha e ';'
     .map(t => t.trim())
     .filter(Boolean);
 }
+
 function atualizarResumosPorTipo(workbook) {
   const todas = coletarTodasAcoes(workbook);
   const mapas = { "Tiroteio": Object.create(null), "Fuga": Object.create(null) };
+
   for (const ac of todas) {
     const tipo = String(ac.tipo || "");
     const alvo = tipo.includes("Tiro") ? "Tiroteio" : (tipo.includes("Fuga") ? "Fuga" : null);
     if (!alvo) continue;
-    const nomes = splitOficiaisCampo(ac.oficiais);
+
+    const nomesUnicos = Array.from(new Set(splitOficiaisCampo(ac.oficiais)));
     const r = String(ac.resultado).toLowerCase();
     const v = r.includes("vit");
     const d = r.includes("der");
-    for (const nome of nomes) {
+
+    for (const nomeRaw of nomesUnicos) {
+      const nome = nomeRaw.replace(/\s+/g, " ").trim(); // normaliza espaços
       if (!mapas[alvo][nome]) mapas[alvo][nome] = { presencas: 0, vitorias: 0, derrotas: 0 };
       mapas[alvo][nome].presencas++;
       if (v) mapas[alvo][nome].vitorias++;
       if (d) mapas[alvo][nome].derrotas++;
     }
   }
+
   for (const tipo of ["Tiroteio","Fuga"]) {
     const mapa = mapas[tipo];
     const rows = [["Oficial","Presenças","Vitórias","Derrotas"]];
@@ -142,26 +150,54 @@ function atualizarResumosPorTipo(workbook) {
   }
 }
 
-/* ========= Menções/IDs -> apelidos ========= */
-async function oficiaisParaApelidos(texto, guild) {
-  if (!texto) return "";
-  let resultado = texto;
-  const idsMencoes = [...texto.matchAll(/<@!?(\d+)>/g)].map(m => m[1]);
-  const idsSoltos  = [...texto.matchAll(/\b(\d{17,20})\b/g)].map(m => m[1]);
-  const ids = Array.from(new Set([...idsMencoes, ...idsSoltos]));
-  const mapa = {};
-  for (const id of ids) {
-    let membro = guild.members.cache.get(id);
-    if (!membro) { try { membro = await guild.members.fetch(id); } catch {} }
-    if (membro) mapa[id] = membro.nickname || membro.displayName || membro.user?.username || id;
+/* ========= Extrai lista de oficiais (menções/IDs -> apelidos), dedup e ordem de aparição ========= */
+async function listarOficiais(guild, texto) {
+  const nomes = [];
+  const idsSet = new Set();
+  const nomesSet = new Set();
+
+  if (!texto) return [];
+
+  // 1) Menções <@123> e <@!123>
+  const mentionIds = [...texto.matchAll(/<@!?(\d+)>/g)].map(m => m[1]);
+  for (const id of mentionIds) {
+    if (idsSet.has(id)) continue;
+    idsSet.add(id);
+    let m = guild.members.cache.get(id);
+    if (!m) { try { m = await guild.members.fetch(id); } catch {} }
+    const nome = m?.nickname || m?.displayName || m?.user?.username;
+    if (nome && !nomesSet.has(nome)) { nomesSet.add(nome); nomes.push(nome); }
   }
-  for (const id of ids) {
-    if (!mapa[id]) continue;
-    resultado = resultado
-      .replace(new RegExp(`<@!?${id}>`, "g"), mapa[id])
-      .replace(new RegExp(`\\b${id}\\b`, "g"), mapa[id]);
+
+  // 2) IDs soltos (17–20 dígitos) que não estavam nas menções
+  const idTokens = [...texto.matchAll(/\b(\d{17,20})\b/g)].map(m => m[1]);
+  for (const id of idTokens) {
+    if (idsSet.has(id)) continue;
+    idsSet.add(id);
+    let m = guild.members.cache.get(id);
+    if (!m) { try { m = await guild.members.fetch(id); } catch {} }
+    const nome = m?.nickname || m?.displayName || m?.user?.username || id;
+    if (nome && !nomesSet.has(nome)) { nomesSet.add(nome); nomes.push(nome); }
   }
-  return resultado;
+
+  // 3) Sobras do texto (retira menções/ids já processados) e separa por , ; ou \n
+  const textoRestante = texto
+    .replace(/<@!?(\d+)>/g, "")
+    .replace(/\b(\d{17,20})\b/g, "")
+    .trim();
+
+  if (textoRestante) {
+    const extras = textoRestante
+      .split(/[,\n;]+/g)
+      .map(s => s.replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+
+    for (const nome of extras) {
+      if (!nomesSet.has(nome)) { nomesSet.add(nome); nomes.push(nome); }
+    }
+  }
+
+  return nomes;
 }
 
 /* ========= Choices ========= */
@@ -184,7 +220,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao")
     .setDescription("Registra ação policial (resultado, tipo, alvo, descrição, oficiais, data, boletim) + planilha.")
-    // OBRIGATÓRIAS primeiro (Discord exige isso)
+    // OBRIGATÓRIAS primeiro
     .addUserOption(o => o.setName("autor").setDescription("Quem está registrando a ação").setRequired(true))
     .addStringOption(o =>
       o.setName("resultado").setDescription("Resultado").setRequired(true).addChoices(
@@ -219,16 +255,16 @@ module.exports = {
       const resultado = interaction.options.getString("resultado", true);
       const tipo      = interaction.options.getString("tipo", true);
       const acaoAlvo  = interaction.options.getString("acao_alvo", true);
-      const descricao = interaction.options.getString("descricao", true); // obrigatória
+      const descricao = interaction.options.getString("descricao", true);
       const boletim   = interaction.options.getString("boletim", true);
       const dataIn    = interaction.options.getString("data") || "";
       const dataBR    = parseDataFlex(dataIn) || hojeBR();
       const timestamp = new Date().toLocaleString("pt-BR");
 
-      // Oficiais: apenas o campo texto (aceita @menções, IDs e nomes)
+      // Oficiais: texto livre — no EMBED mantém o que o usuário digitou (menções)
       const oficiaisTexto = interaction.options.getString("oficiais") || "";
 
-      // EMBED (mantém as menções que o usuário escreveu)
+      // EMBED
       const descricaoEmbed = String(descricao).slice(0, 1024) || "—";
       const embed = new EmbedBuilder()
         .setColor(resultado === "Vitória" ? "#00C853" : (resultado === "Derrota" ? "#E53935" : "#FBC02D"))
@@ -247,21 +283,23 @@ module.exports = {
         .setTimestamp();
       await interaction.channel.send({ embeds: [embed] });
 
-      // PLANILHA (converte menções/IDs para apelidos)
+      // PLANILHA — extrai oficiais (menções/IDs/nome), dedup e salva um por linha
+      const listaOficiais = await listarOficiais(interaction.guild, oficiaisTexto);
+      const oficiaisParaPlanilha = (listaOficiais.length ? listaOficiais.join("\n") : "—");
+
       const wb = ensureWorkbook();
       const sheetName = ensureMonthSheet(wb, dataBR);
-      const oficiaisParaPlanilha = (await oficiaisParaApelidos(oficiaisTexto, interaction.guild)) || "—";
 
       appendRow(wb, sheetName, [
-        dataBR,                // Data
-        autorNome,             // Autor
-        resultado,             // Resultado
-        tipo,                  // Tipo
-        acaoAlvo,              // Ação
-        descricao,             // Descrição (completa)
-        oficiaisParaPlanilha,  // Oficiais (apelidos)
-        boletim,               // Boletim
-        timestamp,             // Registrado em
+        dataBR,               // Data
+        autorNome,            // Autor
+        resultado,            // Resultado
+        tipo,                 // Tipo
+        acaoAlvo,             // Ação
+        descricao,            // Descrição
+        oficiaisParaPlanilha, // Oficiais (um por linha)
+        boletim,              // Boletim
+        timestamp,            // Registrado em
       ]);
 
       atualizarResumosPorTipo(wb);
