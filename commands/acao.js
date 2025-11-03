@@ -1,5 +1,5 @@
 // commands/acao.js — Registra ação, atualiza planilha e resumos (Tiroteio/Fuga)
-// + persistência, backup e DESCRIÇÃO obrigatória
+// + persistência, backup e DESCRIÇÃO obrigatória (versão enxuta: sem oficial_1..10)
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
@@ -42,7 +42,6 @@ function parseDataFlex(input) {
   if (m) return `${m[1]}/${m[2]}/${m[3]}`;
   return null;
 }
-
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
 /* ========= Planilha ========= */
@@ -88,6 +87,7 @@ function appendRow(workbook, sheetName, row) {
   workbook.Sheets[sheetName] = wsNew;
 }
 
+/* ========= Leitura + Resumos ========= */
 function coletarTodasAcoes(workbook) {
   const todas = [];
   for (const name of workbook.SheetNames) {
@@ -142,7 +142,7 @@ function atualizarResumosPorTipo(workbook) {
   }
 }
 
-/* ========= Menções -> apelidos ========= */
+/* ========= Menções/IDs -> apelidos ========= */
 async function oficiaisParaApelidos(texto, guild) {
   if (!texto) return "";
   let resultado = texto;
@@ -164,7 +164,7 @@ async function oficiaisParaApelidos(texto, guild) {
   return resultado;
 }
 
-/* ========= Opções ========= */
+/* ========= Choices ========= */
 const ACAO_CHOICES = [
   { name: "Distribuidora", value: "Distribuidora" },
   { name: "Joalheria", value: "Joalheria" },
@@ -184,7 +184,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao")
     .setDescription("Registra ação policial (resultado, tipo, alvo, descrição, oficiais, data, boletim) + planilha.")
-    // OBRIGATÓRIAS — devem vir primeiro
+    // OBRIGATÓRIAS primeiro (Discord exige isso)
     .addUserOption(o => o.setName("autor").setDescription("Quem está registrando a ação").setRequired(true))
     .addStringOption(o =>
       o.setName("resultado").setDescription("Resultado").setRequired(true).addChoices(
@@ -202,19 +202,9 @@ module.exports = {
     .addStringOption(o => o.setName("acao_alvo").setDescription("Ação/Alvo").setRequired(true).addChoices(...ACAO_CHOICES))
     .addStringOption(o => o.setName("descricao").setDescription("Descreva brevemente a ocorrência").setRequired(true))
     .addStringOption(o => o.setName("boletim").setDescription("Número do boletim").setRequired(true))
-    // OPCIONAIS — sempre depois das required
-    .addStringOption(o => o.setName("data").setDescription("Data (DD/MM/AAAA ou AAAA-MM-DD)").setRequired(false))
-    .addUserOption(o => o.setName("oficial_1").setDescription("Oficial 1").setRequired(false))
-    .addUserOption(o => o.setName("oficial_2").setDescription("Oficial 2").setRequired(false))
-    .addUserOption(o => o.setName("oficial_3").setDescription("Oficial 3").setRequired(false))
-    .addUserOption(o => o.setName("oficial_4").setDescription("Oficial 4").setRequired(false))
-    .addUserOption(o => o.setName("oficial_5").setDescription("Oficial 5").setRequired(false))
-    .addUserOption(o => o.setName("oficial_6").setDescription("Oficial 6").setRequired(false))
-    .addUserOption(o => o.setName("oficial_7").setDescription("Oficial 7").setRequired(false))
-    .addUserOption(o => o.setName("oficial_8").setDescription("Oficial 8").setRequired(false))
-    .addUserOption(o => o.setName("oficial_9").setDescription("Oficial 9").setRequired(false))
-    .addUserOption(o => o.setName("oficial_10").setDescription("Oficial 10").setRequired(false))
-    .addStringOption(o => o.setName("oficiais").setDescription("Oficiais (texto livre: menções/IDs/nomes)").setRequired(false)),
+    // OPCIONAIS depois
+    .addStringOption(o => o.setName("data").setDescription("Data (DD/MM/AAAA ou AAAA-MM-DD)"))
+    .addStringOption(o => o.setName("oficiais").setDescription("Oficiais (texto livre: @menções, IDs ou nomes)")),
 
   async execute(interaction) {
     try {
@@ -229,44 +219,19 @@ module.exports = {
       const resultado = interaction.options.getString("resultado", true);
       const tipo      = interaction.options.getString("tipo", true);
       const acaoAlvo  = interaction.options.getString("acao_alvo", true);
-      const descricao = interaction.options.getString("descricao", true); // required de verdade
+      const descricao = interaction.options.getString("descricao", true); // obrigatória
       const boletim   = interaction.options.getString("boletim", true);
       const dataIn    = interaction.options.getString("data") || "";
       const dataBR    = parseDataFlex(dataIn) || hojeBR();
       const timestamp = new Date().toLocaleString("pt-BR");
 
-      // Oficiais: 10 pickers + texto livre
-      const oficiaisSelecionados = [];
-      for (let i = 1; i <= 10; i++) {
-        const u = interaction.options.getUser(`oficial_${i}`);
-        if (u) oficiaisSelecionados.push(u);
-      }
+      // Oficiais: apenas o campo texto (aceita @menções, IDs e nomes)
       const oficiaisTexto = interaction.options.getString("oficiais") || "";
 
-      // EMBED
-      const mencoesSelecionados = oficiaisSelecionados.map(u => `<@${u.id}>`);
-      const embedOficiaisValue =
-        [ ...mencoesSelecionados, oficiaisTexto ].filter(Boolean).join(", ").trim() || "—";
+      // EMBED (mantém as menções que o usuário escreveu)
       const descricaoEmbed = String(descricao).slice(0, 1024) || "—";
-
-      // PLANILHA
-      const nomesSelecionados = [];
-      for (const u of oficiaisSelecionados) {
-        const m =
-          interaction.guild.members.cache.get(u.id) ||
-          await interaction.guild.members.fetch(u.id).catch(() => null);
-        nomesSelecionados.push(m?.nickname || m?.displayName || u.username);
-      }
-      const nomesDoTexto = await oficiaisParaApelidos(oficiaisTexto, interaction.guild);
-      const oficiaisParaPlanilha = [ ...nomesSelecionados, nomesDoTexto ]
-        .filter(Boolean)
-        .join(", ")
-        .trim();
-
-      // Embed público
-      const color = resultado === "Vitória" ? "#00C853" : (resultado === "Derrota" ? "#E53935" : "#FBC02D");
       const embed = new EmbedBuilder()
-        .setColor(color)
+        .setColor(resultado === "Vitória" ? "#00C853" : (resultado === "Derrota" ? "#E53935" : "#FBC02D"))
         .setTitle("📋 Relatório de Ação Policial")
         .addFields(
           { name: "Autor do Comando", value: autorMencao, inline: true },
@@ -276,27 +241,27 @@ module.exports = {
           { name: "Data", value: dataBR, inline: true },
           { name: "Boletim", value: `\`${boletim}\``, inline: true },
           { name: "Descrição", value: descricaoEmbed },
-          { name: "Oficiais Presentes", value: embedOficiaisValue }
+          { name: "Oficiais Presentes", value: oficiaisTexto || "—" }
         )
         .setFooter({ text: `Registrado por ${interaction.user.tag}` })
         .setTimestamp();
-
       await interaction.channel.send({ embeds: [embed] });
 
-      // Planilha
+      // PLANILHA (converte menções/IDs para apelidos)
       const wb = ensureWorkbook();
       const sheetName = ensureMonthSheet(wb, dataBR);
+      const oficiaisParaPlanilha = (await oficiaisParaApelidos(oficiaisTexto, interaction.guild)) || "—";
 
       appendRow(wb, sheetName, [
-        dataBR,
-        autorNome,
-        resultado,
-        tipo,
-        acaoAlvo,
-        descricao,                    // descrição completa na planilha
-        oficiaisParaPlanilha || "—",
-        boletim,
-        timestamp,
+        dataBR,                // Data
+        autorNome,             // Autor
+        resultado,             // Resultado
+        tipo,                  // Tipo
+        acaoAlvo,              // Ação
+        descricao,             // Descrição (completa)
+        oficiaisParaPlanilha,  // Oficiais (apelidos)
+        boletim,               // Boletim
+        timestamp,             // Registrado em
       ]);
 
       atualizarResumosPorTipo(wb);
