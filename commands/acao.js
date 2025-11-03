@@ -1,10 +1,11 @@
-// commands/acao.js — Registra ação, atualiza planilha e resumos (Tiroteio/Fuga) + persistência, backup e DESCRIÇÃO
+// commands/acao.js — Registra ação, atualiza planilha e resumos (Tiroteio/Fuga)
+// + persistência, backup e DESCRIÇÃO obrigatória
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 
-/* ========= Config de persistência ========= */
+/* ========= Persistência ========= */
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const LEGACY_FILE_PATH = path.join(__dirname, "../acoes_dpd.xlsx");
 const FILE_PATH = path.join(DATA_DIR, "acoes_dpd.xlsx");
@@ -86,6 +87,7 @@ function appendRow(workbook, sheetName, row) {
   applyColumnWidths(wsNew);
   workbook.Sheets[sheetName] = wsNew;
 }
+
 function coletarTodasAcoes(workbook) {
   const todas = [];
   for (const name of workbook.SheetNames) {
@@ -140,7 +142,7 @@ function atualizarResumosPorTipo(workbook) {
   }
 }
 
-/* ========= Converte menções/IDs do texto para apelidos ========= */
+/* ========= Menções -> apelidos ========= */
 async function oficiaisParaApelidos(texto, guild) {
   if (!texto) return "";
   let resultado = texto;
@@ -182,7 +184,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao")
     .setDescription("Registra ação policial (resultado, tipo, alvo, descrição, oficiais, data, boletim) + planilha.")
-    // ---- OBRIGATÓRIAS (todas primeiro) ----
+    // OBRIGATÓRIAS — devem vir primeiro
     .addUserOption(o => o.setName("autor").setDescription("Quem está registrando a ação").setRequired(true))
     .addStringOption(o =>
       o.setName("resultado").setDescription("Resultado").setRequired(true).addChoices(
@@ -200,7 +202,7 @@ module.exports = {
     .addStringOption(o => o.setName("acao_alvo").setDescription("Ação/Alvo").setRequired(true).addChoices(...ACAO_CHOICES))
     .addStringOption(o => o.setName("descricao").setDescription("Descreva brevemente a ocorrência").setRequired(true))
     .addStringOption(o => o.setName("boletim").setDescription("Número do boletim").setRequired(true))
-    // ---- OPCIONAIS (depois das obrigatórias) ----
+    // OPCIONAIS — sempre depois das required
     .addStringOption(o => o.setName("data").setDescription("Data (DD/MM/AAAA ou AAAA-MM-DD)").setRequired(false))
     .addUserOption(o => o.setName("oficial_1").setDescription("Oficial 1").setRequired(false))
     .addUserOption(o => o.setName("oficial_2").setDescription("Oficial 2").setRequired(false))
@@ -227,22 +229,13 @@ module.exports = {
       const resultado = interaction.options.getString("resultado", true);
       const tipo      = interaction.options.getString("tipo", true);
       const acaoAlvo  = interaction.options.getString("acao_alvo", true);
-
-      const descricao = interaction.options.getString("descricao") || "";
-      if (!descricao.trim()) {
-        await interaction.reply({
-          content: "⚠️ O campo **descrição** é obrigatório.",
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
-      }
-
+      const descricao = interaction.options.getString("descricao", true); // required de verdade
       const boletim   = interaction.options.getString("boletim", true);
       const dataIn    = interaction.options.getString("data") || "";
       const dataBR    = parseDataFlex(dataIn) || hojeBR();
       const timestamp = new Date().toLocaleString("pt-BR");
 
-      // ===== Oficiais: coleta dos 10 pickers + texto livre =====
+      // Oficiais: 10 pickers + texto livre
       const oficiaisSelecionados = [];
       for (let i = 1; i <= 10; i++) {
         const u = interaction.options.getUser(`oficial_${i}`);
@@ -250,13 +243,13 @@ module.exports = {
       }
       const oficiaisTexto = interaction.options.getString("oficiais") || "";
 
-      // Para o EMBED
+      // EMBED
       const mencoesSelecionados = oficiaisSelecionados.map(u => `<@${u.id}>`);
       const embedOficiaisValue =
         [ ...mencoesSelecionados, oficiaisTexto ].filter(Boolean).join(", ").trim() || "—";
       const descricaoEmbed = String(descricao).slice(0, 1024) || "—";
 
-      // Para a PLANILHA
+      // PLANILHA
       const nomesSelecionados = [];
       for (const u of oficiaisSelecionados) {
         const m =
@@ -270,7 +263,7 @@ module.exports = {
         .join(", ")
         .trim();
 
-      // ===== Embed público =====
+      // Embed público
       const color = resultado === "Vitória" ? "#00C853" : (resultado === "Derrota" ? "#E53935" : "#FBC02D");
       const embed = new EmbedBuilder()
         .setColor(color)
@@ -290,20 +283,20 @@ module.exports = {
 
       await interaction.channel.send({ embeds: [embed] });
 
-      // ===== Planilha =====
+      // Planilha
       const wb = ensureWorkbook();
       const sheetName = ensureMonthSheet(wb, dataBR);
 
       appendRow(wb, sheetName, [
-        dataBR,                      // Data
-        autorNome,                   // Autor
-        resultado,                   // Resultado
-        tipo,                        // Tipo
-        acaoAlvo,                    // Ação
-        descricao,                   // Descrição (completa)
-        oficiaisParaPlanilha || "—", // Oficiais (nomes)
-        boletim,                     // Boletim
-        timestamp,                   // Registrado em
+        dataBR,
+        autorNome,
+        resultado,
+        tipo,
+        acaoAlvo,
+        descricao,                    // descrição completa na planilha
+        oficiaisParaPlanilha || "—",
+        boletim,
+        timestamp,
       ]);
 
       atualizarResumosPorTipo(wb);
