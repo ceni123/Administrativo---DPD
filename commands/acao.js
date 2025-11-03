@@ -182,6 +182,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("acao")
     .setDescription("Registra ação policial (resultado, tipo, alvo, descrição, oficiais, data, boletim) + planilha.")
+    // ---- OBRIGATÓRIAS (todas primeiro) ----
     .addUserOption(o => o.setName("autor").setDescription("Quem está registrando a ação").setRequired(true))
     .addStringOption(o =>
       o.setName("resultado").setDescription("Resultado").setRequired(true).addChoices(
@@ -197,11 +198,10 @@ module.exports = {
       )
     )
     .addStringOption(o => o.setName("acao_alvo").setDescription("Ação/Alvo").setRequired(true).addChoices(...ACAO_CHOICES))
-    .addStringOption(o =>
-      o.setName("descricao")
-        .setDescription("Descreva brevemente a ocorrência")
-        .setRequired(true)
-    )
+    .addStringOption(o => o.setName("descricao").setDescription("Descreva brevemente a ocorrência").setRequired(true))
+    .addStringOption(o => o.setName("boletim").setDescription("Número do boletim").setRequired(true))
+    // ---- OPCIONAIS (depois das obrigatórias) ----
+    .addStringOption(o => o.setName("data").setDescription("Data (DD/MM/AAAA ou AAAA-MM-DD)").setRequired(false))
     .addUserOption(o => o.setName("oficial_1").setDescription("Oficial 1").setRequired(false))
     .addUserOption(o => o.setName("oficial_2").setDescription("Oficial 2").setRequired(false))
     .addUserOption(o => o.setName("oficial_3").setDescription("Oficial 3").setRequired(false))
@@ -212,9 +212,7 @@ module.exports = {
     .addUserOption(o => o.setName("oficial_8").setDescription("Oficial 8").setRequired(false))
     .addUserOption(o => o.setName("oficial_9").setDescription("Oficial 9").setRequired(false))
     .addUserOption(o => o.setName("oficial_10").setDescription("Oficial 10").setRequired(false))
-    .addStringOption(o => o.setName("oficiais").setDescription("Oficiais (texto livre: menções/IDs/nomes)").setRequired(false))
-    .addStringOption(o => o.setName("boletim").setDescription("Número do boletim").setRequired(true))
-    .addStringOption(o => o.setName("data").setDescription("Data (DD/MM/AAAA ou AAAA-MM-DD)").setRequired(false)),
+    .addStringOption(o => o.setName("oficiais").setDescription("Oficiais (texto livre: menções/IDs/nomes)").setRequired(false)),
 
   async execute(interaction) {
     try {
@@ -230,7 +228,6 @@ module.exports = {
       const tipo      = interaction.options.getString("tipo", true);
       const acaoAlvo  = interaction.options.getString("acao_alvo", true);
 
-      // Guard para transição de schema (evita crash se o Discord ainda não trouxe a opção nova)
       const descricao = interaction.options.getString("descricao") || "";
       if (!descricao.trim()) {
         await interaction.reply({
